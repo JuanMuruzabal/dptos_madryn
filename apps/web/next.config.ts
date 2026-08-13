@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Empaqueta un server.js standalone con solo los node_modules que
+  // realmente se usan en runtime (traza las dependencias reales) — la
+  // imagen Docker de producción (apps/web/Dockerfile) copia esta carpeta
+  // en vez de todo node_modules del monorepo.
+  output: "standalone",
   // Habilita Partial Prerendering vía Cache Components (por defecto en
   // Next.js 16 con este flag): el layout raíz lee cookies() para saber si
   // hay sesión (T1.2), y sin esto esa sola lectura vuelve dinámica TODA

@@ -1,3 +1,11 @@
+# Levanta la aplicación completa: Postgres + API (Go) + web (Next.js).
+# `docker compose up --build` alcanza para tener todo corriendo, sin
+# instalar Go/Node/pnpm en la máquina — pensado para reproducibilidad
+# entre desarrolladores, no como definición de infra de producción.
+#
+# Variables opcionales en un `.env` junto a este archivo (ver
+# .env.example): JWT_SECRET, CONTACTO_WHATSAPP, CONTACTO_EMAIL.
+
 services:
   postgres:
     image: postgres:16
@@ -17,5 +25,69 @@ services:
       timeout: 5s
       retries: 10
 
+  # Servicio de un solo disparo: aplica el esquema (AutoMigrate + SQL
+  # crudo del exclusion constraint, ver apps/api/internal/db/migrate.go)
+  # y termina. Es idempotente (T0.3) — se puede correr de nuevo en cada
+  # `docker compose up` sin romper nada.
+  migrate:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: turismo-marcuzzi-migrate
+    command: ["/app/migrate"]
+    environment:
+      DATABASE_URL: postgres://turismo:turismo@postgres:5432/turismo_marcuzzi?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: turismo-marcuzzi-api
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      APP_ENV: development
+      DATABASE_URL: postgres://turismo:turismo@postgres:5432/turismo_marcuzzi?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-cambiar-en-produccion}
+      # Storage local (TR-013): /app/uploads vive en el volumen
+      # api_uploads para persistir entre reinicios del contenedor.
+      UPLOADS_DIR: /app/uploads
+      # http://localhost:8080 (no "api:8080") porque esta URL la resuelve
+      # el NAVEGADOR al pedir la imagen, no el contenedor — y el puerto
+      # 8080 del servicio api está publicado al host más abajo.
+      UPLOADS_BASE_URL: http://localhost:8080/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: turismo-marcuzzi-web
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      # http://api:8080 (nombre del servicio, resuelto por la red interna
+      # de Docker) porque esta URL la usa el SERVIDOR de Next (Server
+      # Components/Actions, apps/web/src/lib/api.ts) para hablarle a la
+      # API — a diferencia de UPLOADS_BASE_URL arriba, esto nunca lo
+      # resuelve el navegador.
+      API_URL: http://api:8080
+      CONTACTO_WHATSAPP: ${CONTACTO_WHATSAPP:-5492804000000}
+      CONTACTO_EMAIL: ${CONTACTO_EMAIL:-hola@turismomarcuzzi.com.ar}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
+  api_uploads:
