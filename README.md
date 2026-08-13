@@ -148,27 +148,27 @@ máquina de desarrollo donde casi siempre queda uno de una corrida anterior.
 
 ## Flujo de ramas
 
-- **`prod`** — lo que está en producción. Solo recibe merges desde `dev`
-  cuando se decide hacer un release.
+- **`main`** — lo que está en producción (juega el rol de "prod"). Es la
+  rama default del repo y la que dispara CI en cada push (`ci.yml`). Solo
+  recibe merges desde `dev` cuando se decide hacer un release.
 - **`dev`** — rama de integración de desarrollo. Todo el trabajo en curso
-  converge acá antes de pasar a `prod`.
+  converge acá antes de pasar a `main`.
 - **`feature/<nombre-corto>`** — una rama por feature nueva, sale de `dev`
   y vuelve a `dev` por PR (p. ej. `feature/panel-admin-vehiculos`).
 - **`fix/<nombre-corto>`** — una rama por corrección de bug, mismo circuito
   que `feature/*` (sale de `dev`, PR de vuelta a `dev`).
 
 ```
-prod  ──────────────────────●───────────────●──────  (releases)
+main  ──────────────────────●───────────────●──────  (releases)
                               \\             /
 dev   ──●────●────●────●──────●─────●───────●──────
          \\    \\    /    /
 feature/x ●────●    fix/y
 ```
 
-`main` es el nombre histórico de la rama por defecto de este repo (todavía
-no existen `prod`/`dev` como ramas separadas) — al adoptar este flujo,
-`main` pasa a jugar el rol de `prod` y se crea `dev` a partir de su estado
-actual.
+No se usa una rama `prod` separada a propósito: `main` ya es la default de
+GitHub y la que dispara CI, así que darle el rol de "prod" directamente
+evita mantener dos ramas sincronizadas a mano por el mismo estado.
 
 ## Regla de negocio clave: acceso a servicios atado a alojamiento vigente
 
