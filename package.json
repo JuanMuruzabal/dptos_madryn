@@ -1,0 +1,21 @@
+{
+  "name": "turismo-marcuzzi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo de Turismo Marcuzzi. apps/web (Next.js) y packages/* son workspaces pnpm (ver pnpm-workspace.yaml); apps/api es un módulo Go independiente (ver docs/implementation-plan.md).",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @turismo-marcuzzi/web dev",
+    "build:web": "pnpm --filter @turismo-marcuzzi/web build",
+    "lint:web": "pnpm --filter @turismo-marcuzzi/web lint",
+    "typecheck:web": "pnpm --filter @turismo-marcuzzi/web typecheck",
+    "typecheck:shared-types": "pnpm --filter @turismo-marcuzzi/shared-types typecheck",
+    "dev:api": "cd apps/api && go run ./cmd/api",
+    "migrate:api": "cd apps/api && go run ./cmd/migrate",
+    "build:api": "cd apps/api && go build ./...",
+    "vet:api": "cd apps/api && go vet ./..."
+  }
+}

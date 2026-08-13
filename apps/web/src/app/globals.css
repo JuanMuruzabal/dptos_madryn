@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/*
+ * Sistema de diseño — Turismo Marcuzzi
+ * Ver docs/turismo-marcuzzi-diseno-frontend.md (brief) — Variante A
+ * (clara/cálida). Paleta fija por el brief; nombres de rol elegidos acá.
+ */
+:root {
+  /* --- Color: paleta patagónica cálida (brief, Variante A) --- */
+  --color-sand: #f7f4ef; /* fondo general */
+  --color-sand-dim: #efe8db; /* fondo de secciones alternadas / bordes */
+  --color-ink: #12333b; /* texto principal, azul petróleo profundo */
+  --color-ink-soft: #12333bb3; /* ink al 70%, para texto secundario */
+  --color-coral: #e2725b; /* acento cálido primario (CTAs) */
+  --color-coral-dark: #c85b45; /* hover/active del coral */
+  --color-dune: #c99a5b; /* acento dorado secundario (detalles, ratings) */
+  --color-tide: #1f7a8c; /* secundario turquesa mar (links, foco) */
+  --color-tide-dark: #185f6b;
+  --color-steppe: #6f7d4a; /* estepa patagónica — categoría Servicio Turístico */
+
+  /* Overlay de fotos derivado del ink de marca, no un negro genérico. */
+  --overlay-photo: linear-gradient(
+    to top,
+    rgba(18, 51, 59, 0.82) 0%,
+    rgba(18, 51, 59, 0.35) 45%,
+    rgba(18, 51, 59, 0.05) 75%
+  );
+
+  /* --- Tipografía (ver docs/tradeoffs.md TR-023, supera a TR-012) --- */
+  --font-display: var(--font-heading), system-ui, sans-serif;
+  --font-body: var(--font-body-face), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Layout --- */
+  --container-max: 84rem; /* ancho máximo de contenido en desktop */
+}
+
+@theme inline {
+  --color-sand: var(--color-sand);
+  --color-sand-dim: var(--color-sand-dim);
+  --color-ink: var(--color-ink);
+  --color-coral: var(--color-coral);
+  --color-coral-dark: var(--color-coral-dark);
+  --color-dune: var(--color-dune);
+  --color-tide: var(--color-tide);
+  --color-tide-dark: var(--color-tide-dark);
+  --color-steppe: var(--color-steppe);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+/*
+ * Todo lo de acá abajo va en @layer base/components a propósito (bug real
+ * encontrado 2026-08-12): Tailwind v4 genera sus utilidades dentro de
+ * capas CSS (@layer base/components/utilities). Por la spec de cascade
+ * layers, CSS *sin capa* le gana a CUALQUIER CSS con capa, sin importar
+ * el orden en el archivo — así que `.photo-placeholder { position:
+ * relative }` sin capa le ganaba a la utilidad `.absolute` de Tailwind en
+ * el mismo elemento, dejaba el placeholder sin `position:absolute` real,
+ * `inset-0` no hacía nada, y el div colapsaba a alto 0 (invisible). Con
+ * estas reglas en @layer components, las utilidades (@layer utilities,
+ * más adelante en el orden de Tailwind) vuelven a poder pisarlas.
+ */
+@layer base {
+  /* `overscroll-behavior: none` es el fix real (bug reportado 2026-08-13:
+     con touchpad, pasarte del límite arriba/izquierda/derecha de la
+     página "destapaba" el header fijo — el rebote elástico nativo pinta
+     su propio velo por encima incluso de elementos `position: fixed`,
+     `background` solo en <html> no alcanza para evitarlo, solo para que
+     ese velo sea del color de marca en vez de blanco puro si algún
+     navegador no soporta la propiedad). `overflow-x: hidden` en <body> es
+     una red de seguridad aparte: nada en el sitio debería poder generar
+     scroll horizontal real, pero si algo lo hiciera algún día, que no se
+     note en vez de reventar en un rebote lateral. */
+  html {
+    background: var(--color-ink);
+    overscroll-behavior: none;
+  }
+
+  body {
+    background: var(--color-sand);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  /* Etiquetas/nav/eyebrows: mayúsculas trackeadas EN MONO (no en la sans
+   * de cuerpo) — es el registro de "carta náutica"/bitácora que
+   * distingue el sitio de una landing de agencia genérica. Ver TR-012 en
+   * docs/tradeoffs.md. */
+  .tracked-caps {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  /* Nunito Sans (TR-023) necesita el peso fijado acá, no solo en el
+   * @font-face: la utilidad `font-display` de Tailwind (generada desde
+   * --font-display en @theme) solo aplica font-family, así que sin esto
+   * el peso heredado sería el normal (400) del body y los títulos no
+   * leerían como títulos — coexiste sin pisar la utilidad de Tailwind
+   * porque cada una fija una propiedad distinta (family vs. weight). */
+  .font-display {
+    font-weight: 800;
+  }
+
+  /* Línea de horizonte: motivo recurrente en vez de un <hr> genérico —
+     evoca la costa del Golfo Nuevo, se usa como separador consistente. */
+  .horizon-rule {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-ink) 20%,
+      var(--color-ink) 80%,
+      transparent
+    );
+    opacity: 0.15;
+  }
+
+  /* Placeholder de foto: gradiente con la paleta de marca, texturizado
+     con grano sutil vía SVG. Se reemplaza por next/image cuando haya
+     fotografía real (ver props `image` de <Scene>) — nunca queda un
+     <img> roto. Siempre se usa junto con la utilidad `absolute` de
+     Tailwind (ver <Scene>) — por eso NO fija `position` acá: dejar que
+     la utilidad la controle evita depender del orden de capas para algo
+     tan básico. */
+  .photo-placeholder {
+    background-image:
+      radial-gradient(
+        120% 140% at 15% 10%,
+        rgba(255, 255, 255, 0.16),
+        transparent 55%
+      ),
+      var(--scene-gradient, linear-gradient(135deg, #1f7a8c, #12333b));
+  }
+
+  .photo-placeholder::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,13 @@
+# Normaliza los finales de línea a LF en el repo (independiente del OS de
+# quien clona/commitea) — evita diffs fantasma entre Windows y Unix en un
+# proyecto que se desarrolla en los dos.
+* text=auto eol=lf
+
+# Binarios: nunca tocar finales de línea.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
