@@ -13,7 +13,7 @@ import { ResenasList } from "@/components/alojamiento/resenas-list";
 import { ResenaForm } from "@/components/alojamiento/resena-form";
 import { AlojamientoForm } from "@/components/admin/alojamiento-form";
 import { FotosManager } from "@/components/admin/fotos-manager";
-import { actualizarAlojamientoAction } from "@/app/actions/admin";
+import { actualizarAlojamientoAction, activarAlojamientoAction } from "@/app/actions/admin";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/admin/ui";
 
 // Sin shell estático real acá (todo depende del `id`) y con notFound()
@@ -199,11 +199,12 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
 
 /**
  * Modo editor (T4.14/T4.15) — reemplaza la galería/info normales cuando
- * un admin llega acá con `?modo=editor` (desde "Editar" en el panel, o
- * desde "Modo editor" en la propia tarjeta del listado, T4.15). La foto
- * de portada YA NO se edita acá — se trasladó a la tarjeta del listado
- * (foto-portada-card-editor.tsx, pedido del cliente 2026-08-13): acá solo
- * quedan los datos/precio y la galería de fotos/video del detalle.
+ * un admin llega acá con `?modo=editor` (desde "Editar" en el panel, desde
+ * "Modo editor" en la propia tarjeta del listado, o directo al crear un
+ * alojamiento nuevo, T4.19). La foto de portada YA NO se edita acá — se
+ * trasladó a la tarjeta del listado (foto-portada-card-editor.tsx, pedido
+ * del cliente 2026-08-13): acá solo quedan los datos/precio y la galería
+ * de fotos/video del detalle.
  */
 function ModoEditor({
   id,
@@ -213,6 +214,7 @@ function ModoEditor({
   alojamiento: NonNullable<Awaited<ReturnType<typeof fetchAlojamiento>>>;
 }) {
   const actualizar = actualizarAlojamientoAction.bind(null, id);
+  const publicar = activarAlojamientoAction.bind(null, id);
 
   return (
     <div>
@@ -227,6 +229,26 @@ function ModoEditor({
           </Link>
         </div>
       </div>
+
+      {/* T4.19: un alojamiento recién creado (o dado de baja) queda oculto
+          del listado público hasta que se publica a propósito — evita que
+          un borrador a medio completar (sin fotos, con datos de relleno)
+          aparezca ahí mientras el admin todavía lo está armando. */}
+      {!alojamiento.activo && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-md border border-coral/30 bg-coral/10 px-4 py-2.5">
+          <div>
+            <p className="tracked-caps text-xs font-semibold text-coral-dark">Todavía no publicado</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              No aparece en el listado de alojamientos hasta que lo publiques.
+            </p>
+          </div>
+          <form action={publicar}>
+            <button type="submit" className={`${primaryButtonClass} px-4 py-1.5 text-xs`}>
+              Publicar
+            </button>
+          </form>
+        </div>
+      )}
 
       <section className="rounded-md border border-ink/10 bg-white p-6 shadow-sm">
         <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Datos y precio</h2>

@@ -63,6 +63,7 @@ func registerAlojamientoRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string, sto
 		r.Post("/alojamientos", h.create)
 		r.Put("/alojamientos/{id}", h.update)
 		r.Delete("/alojamientos/{id}", h.deactivate)
+		r.Post("/alojamientos/{id}/activar", h.activate)
 		r.Post("/alojamientos/{id}/fotos", h.uploadFoto)
 		r.Delete("/alojamientos/{id}/fotos/{fotoId}", h.deleteFoto)
 		r.Post("/alojamientos/{id}/portada", h.uploadPortada)
@@ -340,6 +341,14 @@ type alojamientoRequest struct {
 	Direccion   string  `json:"direccion"`
 	PrecioNoche float64 `json:"precioNoche"`
 	Capacidad   int     `json:"capacidad"`
+	// Borrador (T4.19, pedido del cliente 2026-08-13): solo se lee en
+	// create(), nunca en update() — "crear" desde el panel arma un
+	// alojamiento con datos de relleno y Activo=false, y lo publica recién
+	// cuando el admin lo activa a propósito (POST .../activar) desde su
+	// propia página en modo editor, después de cargar los datos reales y
+	// las fotos. Así nunca aparece un cartel a medio completar en el
+	// listado público (spec §4.7 ya trata "de baja" = no público).
+	Borrador bool `json:"borrador,omitempty"`
 }
 
 func (req alojamientoRequest) validate() string {
@@ -380,11 +389,27 @@ func (h *alojamientoHandler) create(w http.ResponseWriter, r *http.Request) {
 		Direccion:   req.Direccion,
 		PrecioNoche: req.PrecioNoche,
 		Capacidad:   req.Capacidad,
-		Activo:      true,
+		Activo:      !req.Borrador,
 	}
 	if err := h.db.Create(&alojamiento).Error; err != nil {
 		writeError(w, http.StatusInternalServerError, "error creando el alojamiento")
 		return
+	}
+
+	// GORM ignora un `false` explícito en Create() cuando la columna tiene
+	// `gorm:"default:true"` (db.Alojamiento.Activo) — no distingue "no
+	// seteado" de "seteado a false" en un bool no-puntero, así que el
+	// INSERT queda con activo=true sin importar el valor de arriba
+	// (confirmado con test manual). Update() sí lo fuerza sin ese
+	// problema — mismo mecanismo que ya usan deactivate/activate más
+	// abajo, se aplica acá como segundo paso en vez de convertir Activo a
+	// *bool en todo el modelo por un solo caso de uso.
+	if req.Borrador {
+		if err := h.db.Model(&alojamiento).Update("activo", false).Error; err != nil {
+			writeError(w, http.StatusInternalServerError, "error creando el alojamiento")
+			return
+		}
+		alojamiento.Activo = false
 	}
 
 	writeJSON(w, http.StatusCreated, toAlojamientoResponse(alojamiento))
@@ -442,6 +467,32 @@ func (h *alojamientoHandler) deactivate(w http.ResponseWriter, r *http.Request) 
 	res := h.db.Model(&db.Alojamiento{}).Where("id = ?", id).Update("activo", false)
 	if res.Error != nil {
 		writeError(w, http.StatusInternalServerError, "error dando de baja el alojamiento")
+		return
+	}
+	if res.RowsAffected == 0 {
+		writeError(w, http.StatusNotFound, "alojamiento no encontrado")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// activate — POST /alojamientos/{id}/activar: publica un alojamiento que
+// estaba de baja o en borrador (T4.19) — contraparte simétrica de
+// deactivate. Reemplaza al viejo mecanismo de "reactivar reenviando un PUT
+// idéntico" (que en los hechos no tocaba Activo, ver comentario que había
+// en lib/api.ts del frontend) por un endpoint dedicado, sin side-effects
+// sobre el resto de los campos.
+func (h *alojamientoHandler) activate(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+
+	res := h.db.Model(&db.Alojamiento{}).Where("id = ?", id).Update("activo", true)
+	if res.Error != nil {
+		writeError(w, http.StatusInternalServerError, "error activando el alojamiento")
 		return
 	}
 	if res.RowsAffected == 0 {

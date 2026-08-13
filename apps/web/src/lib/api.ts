@@ -259,6 +259,9 @@ export interface AlojamientoInput {
   direccion: string;
   precioNoche: number;
   capacidad: number;
+  // T4.19: solo lo lee el backend en la creación (nunca en la edición) —
+  // ver comentario en alojamientoRequest, apps/api/internal/http/alojamientos.go.
+  borrador?: boolean;
 }
 
 export async function crearAlojamiento(token: string, input: AlojamientoInput): Promise<ApiResult<Alojamiento>> {
@@ -274,23 +277,18 @@ export async function actualizarAlojamiento(
 }
 
 /** DELETE /alojamientos/{id} (T4.2) — "dar de baja" (soft, activo=false),
- * no un borrado físico (ver comentario en el handler Go). Reactivar es la
- * misma actualizarAlojamiento pasando por PUT (el backend no distingue). */
+ * no un borrado físico (ver comentario en el handler Go). */
 export async function darDeBajaAlojamiento(token: string, id: string): Promise<ApiResult<undefined>> {
   return requestAuthed<undefined>(`/alojamientos/${id}`, token, "DELETE");
 }
 
-/** Reactivar un alojamiento dado de baja — no hay endpoint dedicado,
- * reutiliza PUT (T4.2) para volver a poner activo=true. En vez de tocar el
- * backend para esto, el reactivar simplemente reenvía los mismos datos
- * actuales: el DELETE es el único que apaga `activo`, así que cualquier
- * otro cambio (o directamente un PUT idéntico) lo vuelve a prender. */
-export async function reactivarAlojamiento(
-  token: string,
-  id: string,
-  input: AlojamientoInput,
-): Promise<ApiResult<Alojamiento>> {
-  return actualizarAlojamiento(token, id, input);
+/** POST /alojamientos/{id}/activar (T4.19) — publica un alojamiento que
+ * estaba de baja o recién creado como borrador (ver AlojamientoInput.borrador).
+ * Endpoint dedicado, simétrico a darDeBajaAlojamiento — reemplaza al viejo
+ * mecanismo de "reenviar un PUT idéntico" que en los hechos no tocaba
+ * `activo` (bug real, corregido acá en vez de perpetuado). */
+export async function activarAlojamiento(token: string, id: string): Promise<ApiResult<undefined>> {
+  return requestAuthed<undefined>(`/alojamientos/${id}/activar`, token, "POST");
 }
 
 /** POST /alojamientos/{id}/fotos (T2.1/T4.2/T4.13), multipart — no pasa

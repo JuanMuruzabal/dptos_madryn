@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  activarAlojamiento,
   actualizarAlojamiento,
   actualizarDatosReserva,
   actualizarEstadoReserva,
@@ -13,7 +14,6 @@ import {
   borrarFoto,
   eliminarBloqueo,
   moderarResena,
-  reactivarAlojamiento,
   subirFoto,
   subirFotoPortada,
   subirImagenSitio,
@@ -38,21 +38,40 @@ function alojamientoInputFromForm(formData: FormData): AlojamientoInput {
   };
 }
 
-/** Crea un alojamiento (T4.2) y redirige a su modo editor (T4.14, la
- * propia página pública) — ahí es donde se carga la portada, las fotos y
- * el video, que necesitan un id existente. */
-export async function crearAlojamientoAction(
-  _prevState: AdminFormState,
-  formData: FormData,
-): Promise<AdminFormState> {
-  const token = await getSessionToken();
-  if (!token) return { error: "Iniciá sesión como administrador." };
+// Mismo centro de Puerto Madryn que el default de LocationPicker
+// (components/admin/location-picker.tsx) — duplicado a propósito: ese
+// archivo es "use client" (Leaflet), este es "use server", así que
+// comparten el valor pero no el módulo.
+const PUERTO_MADRYN_LAT = -42.7667;
+const PUERTO_MADRYN_LNG = -65.0333;
 
-  const result = await crearAlojamiento(token, alojamientoInputFromForm(formData));
-  if (!result.ok) return { error: result.error };
+/** Crea un alojamiento "borrador" (T4.19, pedido del cliente 2026-08-13:
+ * la creación tiene que sentirse como "la primera edición") y redirige
+ * directo a su propia página en modo editor — la misma que se usa para
+ * editar cualquier alojamiento existente — donde el admin carga el
+ * nombre real, la descripción, el precio, la ubicación y las fotos. El
+ * botón "Nuevo alojamiento" del panel ya no abre un formulario aparte,
+ * llama a esta acción sin datos: se arma con relleno mínimo válido y
+ * `borrador: true` (Activo=false en el backend), así que no aparece en
+ * el listado público hasta que el admin lo publica a propósito
+ * (activarAlojamientoAction) desde esa misma página. */
+export async function crearAlojamientoBorradorAction(): Promise<void> {
+  const token = await getSessionToken();
+  if (!token) redirect("/ingresar");
+
+  const result = await crearAlojamiento(token, {
+    nombre: "Nuevo alojamiento",
+    descripcion: "",
+    lat: PUERTO_MADRYN_LAT,
+    lng: PUERTO_MADRYN_LNG,
+    direccion: "",
+    precioNoche: 1,
+    capacidad: 1,
+    borrador: true,
+  });
+  if (!result.ok) redirect("/admin/alojamientos");
 
   revalidatePath("/admin/alojamientos");
-  revalidatePath("/alojamiento");
   redirect(`/alojamiento/${result.data.id}?modo=editor`);
 }
 
@@ -74,9 +93,9 @@ export async function actualizarAlojamientoAction(
   return { success: true };
 }
 
-/** DELETE /alojamientos/{id} (dar de baja) y REACTIVAR comparten botón: no
- * hay formulario/inputs de por medio, por eso van sueltos (no
- * useActionState) — mismo criterio que marcarContactadoAction. */
+/** DELETE /alojamientos/{id} (dar de baja) y ACTIVAR (publicar/reactivar)
+ * comparten botón: no hay formulario/inputs de por medio, por eso van
+ * sueltos (no useActionState) — mismo criterio que marcarContactadoAction. */
 export async function darDeBajaAlojamientoAction(id: string): Promise<void> {
   const token = await getSessionToken();
   if (!token) return;
@@ -85,11 +104,16 @@ export async function darDeBajaAlojamientoAction(id: string): Promise<void> {
   revalidatePath("/alojamiento");
 }
 
-export async function reactivarAlojamientoAction(id: string, input: AlojamientoInput): Promise<void> {
+/** Publica un alojamiento (T4.19) — de un borrador recién creado o de uno
+ * dado de baja, no hay distinción para el botón, es el mismo estado
+ * `activo: false` en los dos casos. Se usa desde AlojamientoBajaButton (la
+ * página de Disponibilidad) y desde el banner de ModoEditor. */
+export async function activarAlojamientoAction(id: string): Promise<void> {
   const token = await getSessionToken();
   if (!token) return;
-  await reactivarAlojamiento(token, id, input);
+  await activarAlojamiento(token, id);
   revalidatePath("/admin/alojamientos");
+  revalidatePath(`/alojamiento/${id}`);
   revalidatePath("/alojamiento");
 }
 
