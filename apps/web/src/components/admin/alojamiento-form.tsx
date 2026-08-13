@@ -1,9 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useActionState } from "react";
 import type { Alojamiento } from "@turismo-marcuzzi/shared-types";
 import type { AdminFormState } from "@/app/actions/admin";
 import { inputClass, labelClass, primaryButtonClass } from "@/components/admin/ui";
+
+// `ssr: false` es válido acá porque AlojamientoForm ya es un Client
+// Component ("use client" arriba) — Leaflet toca `window` apenas se
+// importa, así que no puede intentar prerenderizarse en el servidor
+// (mismo motivo que location-map-loader.tsx, pero sin necesitar un
+// archivo aparte porque este componente ya corre del lado del cliente).
+const LocationPicker = dynamic(
+  () => import("@/components/admin/location-picker").then((m) => m.LocationPicker),
+  {
+    ssr: false,
+    loading: () => <div aria-hidden className="h-64 animate-pulse rounded-md bg-sand-dim" />,
+  },
+);
 
 const initialState: AdminFormState = {};
 
@@ -41,42 +55,11 @@ export function AlojamientoForm({
         />
       </div>
 
-      <div>
-        <label htmlFor="direccion" className={labelClass}>Dirección</label>
-        <input
-          id="direccion"
-          name="direccion"
-          defaultValue={alojamiento?.direccion}
-          className={inputClass}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="lat" className={labelClass}>Latitud</label>
-          <input
-            id="lat"
-            name="lat"
-            type="number"
-            step="any"
-            required
-            defaultValue={alojamiento?.lat}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="lng" className={labelClass}>Longitud</label>
-          <input
-            id="lng"
-            name="lng"
-            type="number"
-            step="any"
-            required
-            defaultValue={alojamiento?.lng}
-            className={inputClass}
-          />
-        </div>
-      </div>
+      <LocationPicker
+        direccionInicial={alojamiento?.direccion}
+        latInicial={alojamiento?.lat}
+        lngInicial={alojamiento?.lng}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <div>
