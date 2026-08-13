@@ -300,6 +300,16 @@ ENTRY TEMPLATE:
 - **Qué se sacrifica:** Nada relevante.
 - **Reversibilidad:** Alta — una línea de config.
 
+## TR-032: `pnpm run typecheck:web` corre `next typegen` antes de `tsc` — CI fallaba, local no
+
+- **Fecha:** 2026-08-13
+- **Fase:** build
+- **Decisión:** El script `typecheck` de `apps/web/package.json` pasa de `tsc --noEmit` a `next typegen && tsc --noEmit`.
+- **Alternativas consideradas:** Dejar de usar los tipos ambient `PageProps`/`LayoutProps` de Next 16 en cada `page.tsx`/`layout.tsx` y tipar los props a mano — descartado: son la forma documentada/recomendada de esta versión de Next (ver `apps/web/AGENTS.md`) para tipar rutas dinámicas con seguridad, y volver a tipado manual pierde esa validación.
+- **Por qué:** El check de GitHub Actions "CI / web (lint + typecheck + build)" fallaba en `Typecheck (web)` con `error TS2304: Cannot find name 'PageProps'` en cada `page.tsx`/`layout.tsx` que usa esos tipos (`admin/alojamientos/[id]`, `admin/layout.tsx`, `admin/reservas`, `alojamiento/[id]`, `alojamiento`, `layout.tsx`), pero pasaba sin error en local. Causa raíz: `PageProps`/`LayoutProps` son tipos *ambient* que Next 16 genera en `.next/types/**` (incluido en `tsconfig.json`), y esos archivos solo se generan corriendo `next dev` o `next build`. En una checkout limpia de CI, el job corre `Lint` → `Typecheck (web)` → `Typecheck (shared-types)` → `Build` en ese orden — `tsc --noEmit` se ejecuta ANTES de que exista un `.next/`, así que esos nombres de tipo no están definidos todavía. En la máquina local esto nunca se reprodujo porque siempre había un `.next/` de una corrida anterior de `next dev`/`next build` sentado en el filesystem (gitignored, nunca se borra solo) — confirmado reproduciendo el fallo exacto local con `rm -rf .next && tsc --noEmit`. `next typegen` (comando nuevo de Next 16, "Generate TypeScript definitions for routes, pages, and layouts without running a full build") genera exactamente esos tipos sin pagar el costo de un build completo, y es idempotente/rápido — se puede anteponer a cualquier `tsc --noEmit` sin cambiar el resto del pipeline.
+- **Qué se sacrifica:** Nada relevante — `next typegen` tarda un par de segundos y no requiere red ni el backend disponible (confirmado corriendo el pipeline completo con el backend Go apagado).
+- **Reversibilidad:** Alta — un cambio de una línea en un script de `package.json`.
+
 ## TR-008: Cache Components/Partial Prerendering adoptado en T1.2, no diferido a T5.1
 - **Fecha:** 2026-08-11
 - **Fase:** build
