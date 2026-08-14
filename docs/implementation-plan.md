@@ -390,13 +390,13 @@ Backend y frontend son totalmente paralelizables entre sí (no comparten código
 
 ### 12.7 Criterios de salida de esta fase
 
-- [ ] `go test ./... -coverprofile=coverage.out` en `apps/api` reporta ≥ 80% de coverage total.
-- [ ] `pnpm --filter web test -- --coverage` en `apps/web` reporta ≥ 80% sobre el alcance definido en 12.0.3.
-- [ ] Los tests de concurrencia (T12.10) confirman que el exclusion constraint de reservas sigue rechazando solapamientos con datos reales, no mockeados.
-- [ ] El test de regresión del bug de GORM (T12.9, TR-035) existe y falla si alguien revierte el fix.
-- [ ] `.github/workflows/ci.yml` tiene un job "Run tests and quality gates" que falla el PR si cualquiera de los dos coverage cae debajo de 80%.
-- [ ] `README.md` documenta cómo correr la suite completa localmente.
-- [ ] Decisiones de esta sección registradas en `docs/tradeoffs.md` (TR-038/TR-039/TR-040).
+- [x] `go test ./internal/... -coverprofile=coverage.out` en `apps/api` reporta ≥ 80% de coverage total (82.6% al cerrar esta fase).
+- [x] `pnpm --filter web test:coverage` en `apps/web` reporta ≥ 80% sobre el alcance definido en 12.0.3 (93.78% statements / 90.11% branches / 93.84% functions / 96.15% lines al cerrar esta fase).
+- [x] Los tests de concurrencia (T12.10) confirman que el exclusion constraint de reservas sigue rechazando solapamientos con datos reales, no mockeados.
+- [x] El test de regresión del bug de GORM (T12.9, TR-035) existe y falla si alguien revierte el fix.
+- [x] `.github/workflows/ci.yml` tiene jobs "Run tests and quality gates" (`test-api`/`test-web`) que fallan el build si cualquiera de los dos coverage cae debajo de 80%.
+- [x] `README.md` documenta cómo correr la suite completa localmente.
+- [x] Decisiones de esta sección registradas en `docs/tradeoffs.md` (TR-038/TR-039/TR-040).
 
 ---
 
