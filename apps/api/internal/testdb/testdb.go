@@ -58,6 +58,25 @@ func New(t *testing.T) *gorm.DB {
 	return tx
 }
 
+// Shared devuelve la conexión de test real (NO envuelta en una
+// transacción que se revierte sola) — solo para el puñado de tests que
+// necesitan escrituras de verdad, comprometidas, viéndose entre sí desde
+// transacciones/goroutines distintas (p. ej. el test de concurrencia real
+// del exclusion constraint de reservas, T12.10: dos transacciones
+// separadas tienen que competir de verdad, no una sola transacción
+// procesando dos inserts en serie). El test es responsable de limpiar lo
+// que crea acá (nada se revierte solo).
+func Shared(t *testing.T) *gorm.DB {
+	t.Helper()
+	once.Do(func() {
+		shared, setupErr = setup()
+	})
+	if setupErr != nil {
+		t.Fatalf("testdb: %v", setupErr)
+	}
+	return shared
+}
+
 func setup() (*gorm.DB, error) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
