@@ -172,26 +172,34 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
           </aside>
         </div>
 
-        <div className="mt-16">
-          <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Ubicación</h2>
-          {/* `isolate` (CSS isolation: isolate) a propósito — bug real,
-              2026-08-13: Leaflet le pone z-index propio a sus panes/
-              controles (hasta ~1000) y su contenedor no arma un contexto
-              de apilamiento propio, así que esos valores competían
-              directo contra el z-50 del header en el contexto raíz — al
-              scrollear el mapa hasta pasar por debajo del header fijo, el
-              mapa ganaba. `isolate` contiene el desorden de z-index de
-              Leaflet adentro de este div, sin que se escape hacia arriba
-              (mismo principio que el portal del modal, pero al revés: ahí
-              había que escapar un contexto, acá hay que crear uno). */}
-          <div className="isolate mt-4 h-[400px] overflow-hidden rounded-md">
-            <LocationMapLoader
-              lat={alojamiento.lat}
-              lng={alojamiento.lng}
-              nombre={alojamiento.nombre}
-            />
+        {/* T4.21 (pedido del cliente, 2026-08-14): en modo editor este
+            mapa de solo lectura queda oculto — el LocationPicker de
+            AlojamientoForm (al final de "Datos, precio y ubicación") ya
+            muestra y edita la ubicación ahí mismo; mostrar los dos a la
+            vez era confuso ("ver el mapa 2 veces"). Solo se ve acá en la
+            página normal, la que ve un visitante real. */}
+        {!modoEditor && (
+          <div className="mt-16">
+            <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Ubicación</h2>
+            {/* `isolate` (CSS isolation: isolate) a propósito — bug real,
+                2026-08-13: Leaflet le pone z-index propio a sus panes/
+                controles (hasta ~1000) y su contenedor no arma un contexto
+                de apilamiento propio, así que esos valores competían
+                directo contra el z-50 del header en el contexto raíz — al
+                scrollear el mapa hasta pasar por debajo del header fijo, el
+                mapa ganaba. `isolate` contiene el desorden de z-index de
+                Leaflet adentro de este div, sin que se escape hacia arriba
+                (mismo principio que el portal del modal, pero al revés: ahí
+                había que escapar un contexto, acá hay que crear uno). */}
+            <div className="isolate mt-4 h-[400px] overflow-hidden rounded-md">
+              <LocationMapLoader
+                lat={alojamiento.lat}
+                lng={alojamiento.lng}
+                nombre={alojamiento.nombre}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </main>
   );
@@ -250,19 +258,24 @@ function ModoEditor({
         </div>
       )}
 
+      {/* T4.21 (pedido del cliente, 2026-08-14): orden fotos → datos y
+          precio → ubicación — antes era datos primero. La ubicación
+          (LocationPicker) vive DENTRO de AlojamientoForm, al final del
+          form (ver alojamiento-form.tsx), así que queda última sin
+          necesitar una tercera sección separada acá. */}
       <section className="rounded-md border border-ink/10 bg-white p-6 shadow-sm">
-        <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Datos y precio</h2>
-        <div className="mt-4">
-          <AlojamientoForm alojamiento={alojamiento} action={actualizar} />
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-md border border-ink/10 bg-white p-6 shadow-sm">
         <h2 className="tracked-caps text-xs font-semibold text-ink-soft">
           Fotos y video de la página del alojamiento
         </h2>
         <div className="mt-4">
           <FotosManager alojamientoId={id} fotos={alojamiento.fotos} />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-md border border-ink/10 bg-white p-6 shadow-sm">
+        <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Datos, precio y ubicación</h2>
+        <div className="mt-4">
+          <AlojamientoForm alojamiento={alojamiento} action={actualizar} />
         </div>
       </section>
     </div>

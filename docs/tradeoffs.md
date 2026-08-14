@@ -350,6 +350,16 @@ ENTRY TEMPLATE:
 - **Qué se sacrifica:** El drag-and-drop nativo de HTML5 no funciona en touch/mobile sin un polyfill — aceptable acá porque es una herramienta de admin, uso de escritorio en la práctica (mismo criterio ya aceptado para el pin arrastrable de LocationPicker, TR-034). Reordenar hace un `PATCH` por reorden completo (un `UPDATE` por foto en el backend, hasta 10 queries) en vez de mover una sola fila — irrelevante a esta escala (como mucho 10 filas, la operación es rarísima comparada con listar/ver).
 - **Reversibilidad:** Alta — `FotosManager` es un componente aislado; el endpoint de reordenar es aditivo (no cambia el contrato de subida/borrado existente) y la columna `orden` ya existía desde antes, solo no tenía una forma de reescribirse en lote.
 
+## TR-037: ModoEditor reordenado (fotos → datos y precio → ubicación) y mapa de solo lectura oculto en edición
+
+- **Fecha:** 2026-08-14
+- **Fase:** build
+- **Decisión:** Dos ajustes puntuales sobre ModoEditor (T4.21, pedido del cliente): (1) Las dos secciones cambian de orden — "Fotos y video" pasa a ir primero, "Datos y precio" segundo (renombrada "Datos, precio y ubicación"). Dentro de esa segunda sección, `LocationPicker` (TR-034) se mueve al final del form (después de precio/capacidad, no entre descripción y precio), así que la ubicación queda como lo último de todo el modo editor. (2) La sección "Ubicación" de solo lectura al final de la página (el mapa Leaflet no editable que también ve un visitante normal) ahora se oculta con `{!modoEditor && ...}` cuando se está editando — antes se mostraba siempre, duplicando el mapa junto con el de `LocationPicker` más arriba.
+- **Alternativas consideradas:** Ninguna alternativa real — son correcciones directas sobre feedback de UX concreto (orden pedido explícitamente, confusión de ver el mapa dos veces), no decisiones con trade-offs propios.
+- **Por qué:** El cliente pidió el orden fotos → datos y precio → mapa explícitamente. Mostrar dos mapas (uno editable arriba, uno de solo lectura abajo) en la misma pantalla es información redundante que además puede mostrar valores momentáneamente distintos (el de abajo refleja `alojamiento.lat/lng` del último render del servidor; el de arriba, la posición que se está por guardar) — quitarlo en modo editor elimina esa fuente de confusión sin sacarle nada a la vista pública real, que sigue teniéndolo.
+- **Qué se sacrifica:** Nada relevante — son cambios de orden/visibilidad, sin tocar datos ni el contrato del formulario.
+- **Reversibilidad:** Alta — reordenar JSX y un `{condición && ...}`, ningún cambio de modelo de datos ni de backend.
+
 ## TR-008: Cache Components/Partial Prerendering adoptado en T1.2, no diferido a T5.1
 - **Fecha:** 2026-08-11
 - **Fase:** build

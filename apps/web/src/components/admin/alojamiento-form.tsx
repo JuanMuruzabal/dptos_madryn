@@ -55,12 +55,6 @@ export function AlojamientoForm({
         />
       </div>
 
-      <LocationPicker
-        direccionInicial={alojamiento?.direccion}
-        latInicial={alojamiento?.lat}
-        lngInicial={alojamiento?.lng}
-      />
-
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="precioNoche" className={labelClass}>Precio por noche (ARS)</label>
@@ -88,6 +82,16 @@ export function AlojamientoForm({
           />
         </div>
       </div>
+
+      {/* Al final del form a propósito (T4.21, pedido del cliente
+          2026-08-14): el orden visual de ModoEditor pasó a ser
+          fotos → datos y precio → ubicación, así que el mapa queda
+          como lo último que se completa, no en el medio del form. */}
+      <LocationPicker
+        direccionInicial={alojamiento?.direccion}
+        latInicial={alojamiento?.lat}
+        lngInicial={alojamiento?.lng}
+      />
 
       {state.error && (
         <p role="alert" className="text-sm text-coral-dark">{state.error}</p>
