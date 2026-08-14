@@ -104,13 +104,14 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
 
-      # go list ... | grep -v '/cmd/' excluye cmd/api y cmd/migrate — son
-      # binarios main sin archivos de test, y pedirles -coverprofile igual
-      # hace fallar `go test ./...` con "no such tool covdata" en algunos
+      # ./internal/... en vez de ./... — cmd/api y cmd/migrate son binarios
+      # main sin archivos de test, y pedirles -coverprofile igual hace
+      # fallar `go test ./...` con "no such tool covdata" en algunos
       # toolchains de Go (confirmado localmente) aunque todos los paquetes
-      # con tests reales hayan pasado.
+      # con tests reales hayan pasado. Todo el código con tests reales vive
+      # bajo internal/ (ver CLAUDE.md).
       - name: Test with coverage
-        run: go test $(go list ./... | grep -v '/cmd/') -race -coverprofile=coverage.out -covermode=atomic
+        run: go test ./internal/... -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Check coverage >= 80%
         run: |
