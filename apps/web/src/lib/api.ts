@@ -322,6 +322,18 @@ export async function borrarFoto(token: string, alojamientoId: string, fotoId: s
   return requestAuthed<undefined>(`/alojamientos/${alojamientoId}/fotos/${fotoId}`, token, "DELETE");
 }
 
+/** PATCH /alojamientos/{id}/fotos/orden (T4.20) — persiste el nuevo orden
+ * después de arrastrar una foto/video a otra posición en FotosManager.
+ * `ordenIds` ya viene reordenado por el frontend; el backend solo lo
+ * traduce a la columna `orden` (posición = índice en el array). */
+export async function reordenarFotos(
+  token: string,
+  alojamientoId: string,
+  ordenIds: string[],
+): Promise<ApiResult<undefined>> {
+  return requestAuthed<undefined>(`/alojamientos/${alojamientoId}/fotos/orden`, token, "PATCH", { orden: ordenIds });
+}
+
 /** POST /alojamientos/{id}/portada (T4.14), multipart — la miniatura del
  * listado de Alojamiento, distinta de subirFoto (galería del detalle).
  * Solo imagen, nunca video. */

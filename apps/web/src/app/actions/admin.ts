@@ -14,6 +14,7 @@ import {
   borrarFoto,
   eliminarBloqueo,
   moderarResena,
+  reordenarFotos,
   subirFoto,
   subirFotoPortada,
   subirImagenSitio,
@@ -142,6 +143,16 @@ export async function borrarFotoAction(alojamientoId: string, fotoId: string): P
   const token = await getSessionToken();
   if (!token) return;
   await borrarFoto(token, alojamientoId, fotoId);
+  revalidatePath(`/admin/alojamientos/${alojamientoId}`);
+  revalidatePath(`/alojamiento/${alojamientoId}`);
+}
+
+/** Persiste el orden después de un drag-and-drop en FotosManager (T4.20) —
+ * sin useActionState/inputs de por medio, mismo criterio que borrarFotoAction. */
+export async function reordenarFotosAction(alojamientoId: string, ordenIds: string[]): Promise<void> {
+  const token = await getSessionToken();
+  if (!token) return;
+  await reordenarFotos(token, alojamientoId, ordenIds);
   revalidatePath(`/admin/alojamientos/${alojamientoId}`);
   revalidatePath(`/alojamiento/${alojamientoId}`);
 }

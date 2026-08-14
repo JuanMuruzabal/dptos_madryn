@@ -29,6 +29,12 @@ const (
 	maxImageUploadBytes = 15 << 20
 	maxVideoUploadBytes = 300 << 20
 	dateLayout          = "2006-01-02"
+	// maxFotosPorAlojamiento (T4.20, pedido del cliente 2026-08-13): "10
+	// espacios para imágenes y video" — un pool compartido entre foto y
+	// video, no 10 de cada uno. El frontend ya pinta exactamente 10
+	// casilleros (FotosManager); esto es el mismo límite reforzado en el
+	// backend para que no se pueda saltear pegándole directo a la API.
+	maxFotosPorAlojamiento = 10
 )
 
 var allowedImageTypes = map[string]bool{
@@ -65,6 +71,7 @@ func registerAlojamientoRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string, sto
 		r.Delete("/alojamientos/{id}", h.deactivate)
 		r.Post("/alojamientos/{id}/activar", h.activate)
 		r.Post("/alojamientos/{id}/fotos", h.uploadFoto)
+		r.Patch("/alojamientos/{id}/fotos/orden", h.reordenarFotos)
 		r.Delete("/alojamientos/{id}/fotos/{fotoId}", h.deleteFoto)
 		r.Post("/alojamientos/{id}/portada", h.uploadPortada)
 	})
@@ -524,6 +531,16 @@ func (h *alojamientoHandler) uploadFoto(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var fotosExistentes int64
+	if err := h.db.Model(&db.Foto{}).Where("alojamiento_id = ?", alojamientoID).Count(&fotosExistentes).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "error verificando las fotos existentes")
+		return
+	}
+	if fotosExistentes >= maxFotosPorAlojamiento {
+		writeError(w, http.StatusBadRequest, "ya hay 10 fotos/videos cargados — borrá alguno para subir otro")
+		return
+	}
+
 	// El límite de arriba tiene que alcanzar para el caso más grande
 	// posible en este endpoint (video) — recién después de sniffear el
 	// contenido real se sabe si era una foto, momento en el que se aplica
@@ -681,6 +698,47 @@ func (h *alojamientoHandler) deleteFoto(w http.ResponseWriter, r *http.Request) 
 	if res.RowsAffected == 0 {
 		writeError(w, http.StatusNotFound, "foto no encontrada")
 		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type reordenarFotosRequest struct {
+	Orden []string `json:"orden"`
+}
+
+// reordenarFotos — PATCH /alojamientos/{id}/fotos/orden (T4.20): recibe
+// los ids de foto en el orden final deseado (el frontend ya los reordenó
+// localmente por drag-and-drop) y persiste `Orden` = posición en el
+// array. El `Where("... AND alojamiento_id = ?")` de cada Update acota
+// cada id al alojamiento del path — un id que no le pertenece
+// simplemente no matchea ninguna fila (0 rows affected), no hace falta
+// devolver error por eso, no hay nada que romper.
+func (h *alojamientoHandler) reordenarFotos(w http.ResponseWriter, r *http.Request) {
+	alojamientoID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+
+	var req reordenarFotosRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "cuerpo de la petición inválido")
+		return
+	}
+
+	for i, fotoIDStr := range req.Orden {
+		fotoID, err := uuid.Parse(fotoIDStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "id de foto inválido")
+			return
+		}
+		if err := h.db.Model(&db.Foto{}).
+			Where("id = ? AND alojamiento_id = ?", fotoID, alojamientoID).
+			Update("orden", i).Error; err != nil {
+			writeError(w, http.StatusInternalServerError, "error reordenando las fotos")
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
