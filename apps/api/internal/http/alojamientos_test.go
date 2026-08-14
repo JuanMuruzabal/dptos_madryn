@@ -298,10 +298,27 @@ func TestGet_AlojamientoInactivoSigueVisibleParaPrevisualizar(t *testing.T) {
 
 // --- list ---
 
+func contieneID(resp []alojamientoResponse, id string) bool {
+	for _, a := range resp {
+		if a.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// No asume que la tabla está vacía ni compara longitudes exactas — otros
+// paquetes de test (T12.10/T12.12) usan testdb.Shared para sus tests de
+// concurrencia real, con filas COMPROMETIDAS de verdad (no en una
+// transacción que se revierte) durante una ventana corta mientras
+// `go test ./...` corre los paquetes en paralelo. Postgres en READ
+// COMMITTED (default) re-snapshotea por statement, no por transacción, así
+// que esta query SIN filtro de scope puede ver esas filas ajenas — el test
+// tiene que sobrevivir a eso, solo le importan sus propios fixtures.
 func TestList_SoloDevuelveActivosParaCallerAnonimo(t *testing.T) {
 	h, tx := newAlojamientoHandler(t)
 	activo := crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Activo" })
-	crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Inactivo"; a.Activo = false })
+	inactivo := crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Inactivo"; a.Activo = false })
 
 	rec := httptest.NewRecorder()
 	h.list(rec, reqConParam(http.MethodGet, "/alojamientos", nil, nil))
@@ -310,22 +327,25 @@ func TestList_SoloDevuelveActivosParaCallerAnonimo(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("no se pudo parsear la respuesta: %v", err)
 	}
-	if len(resp) != 1 || resp[0].ID != activo.ID.String() {
-		t.Fatalf("esperaba solo el alojamiento activo, dio %d resultados", len(resp))
+	if !contieneID(resp, activo.ID.String()) {
+		t.Fatal("el alojamiento activo debería aparecer en el listado")
+	}
+	if contieneID(resp, inactivo.ID.String()) {
+		t.Fatal("el alojamiento inactivo NO debería aparecer en el listado sin incluirInactivos")
 	}
 }
 
 func TestList_IncluirInactivosSoloConCallerAdmin(t *testing.T) {
 	h, tx := newAlojamientoHandler(t)
-	crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Activo = false })
+	inactivo := crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Activo = false })
 
 	// Sin token admin: incluirInactivos=true no tiene efecto.
 	rec := httptest.NewRecorder()
 	h.list(rec, reqConParam(http.MethodGet, "/alojamientos?incluirInactivos=true", nil, nil))
 	var sinAdmin []alojamientoResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &sinAdmin)
-	if len(sinAdmin) != 0 {
-		t.Fatalf("sin token admin, incluirInactivos no debería tener efecto (dio %d resultados)", len(sinAdmin))
+	if contieneID(sinAdmin, inactivo.ID.String()) {
+		t.Fatal("sin token admin, incluirInactivos no debería tener efecto")
 	}
 
 	// Con token admin: sí aparece.
@@ -335,14 +355,14 @@ func TestList_IncluirInactivosSoloConCallerAdmin(t *testing.T) {
 	h.list(rec2, req)
 	var conAdmin []alojamientoResponse
 	mustUnmarshal(t, rec2.Body.Bytes(), &conAdmin)
-	if len(conAdmin) != 1 {
-		t.Fatalf("con token admin, incluirInactivos debería mostrar el inactivo (dio %d resultados)", len(conAdmin))
+	if !contieneID(conAdmin, inactivo.ID.String()) {
+		t.Fatal("con token admin, incluirInactivos debería mostrar el inactivo")
 	}
 }
 
 func TestList_FiltroDeHuespedes(t *testing.T) {
 	h, tx := newAlojamientoHandler(t)
-	crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Chico"; a.Capacidad = 2 })
+	chico := crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Chico"; a.Capacidad = 2 })
 	grande := crearAlojamientoDePrueba(t, tx, func(a *db.Alojamiento) { a.Nombre = "Grande"; a.Capacidad = 8 })
 
 	rec := httptest.NewRecorder()
@@ -350,8 +370,11 @@ func TestList_FiltroDeHuespedes(t *testing.T) {
 
 	var resp []alojamientoResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &resp)
-	if len(resp) != 1 || resp[0].ID != grande.ID.String() {
-		t.Fatalf("esperaba solo el alojamiento grande, dio %d resultados", len(resp))
+	if !contieneID(resp, grande.ID.String()) {
+		t.Fatal("el alojamiento grande (capacidad 8) debería aparecer con huespedes=6")
+	}
+	if contieneID(resp, chico.ID.String()) {
+		t.Fatal("el alojamiento chico (capacidad 2) NO debería aparecer con huespedes=6")
 	}
 }
 
@@ -403,8 +426,11 @@ func TestList_ExcluyeAlojamientoConReservaSolapada(t *testing.T) {
 
 	var resp []alojamientoResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &resp)
-	if len(resp) != 1 || resp[0].ID != libre.ID.String() {
-		t.Fatalf("esperaba solo el alojamiento libre, dio %d resultados", len(resp))
+	if !contieneID(resp, libre.ID.String()) {
+		t.Fatal("el alojamiento libre debería aparecer para ese rango de fechas")
+	}
+	if contieneID(resp, ocupado.ID.String()) {
+		t.Fatal("el alojamiento con la reserva solapada NO debería aparecer para ese rango de fechas")
 	}
 }
 

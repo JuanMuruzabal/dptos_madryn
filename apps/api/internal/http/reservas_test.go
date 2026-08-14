@@ -530,22 +530,42 @@ func TestAlojamientoVigente_SinClaimsDaUnauthorized(t *testing.T) {
 
 // --- listAdmin ---
 
+func contieneReservaID(resp []reservaResponse, id string) bool {
+	for _, r := range resp {
+		if r.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// listAdmin no tiene scope (lista TODAS las reservas admin-wide) — igual
+// que los tests de list() en alojamientos_test.go, esto verifica presencia/
+// ausencia de IDs propios en vez de un conteo total exacto, para no
+// depender de que la tabla esté "vacía salvo por este test" (T12.10/T12.12
+// usan testdb.Shared con filas realmente comprometidas por una ventana
+// corta mientras corren en paralelo con este paquete).
 func TestListAdmin_ExcluyeBloqueos(t *testing.T) {
 	h, tx := newReservaHandler(t)
 	u := crearUsuarioDePrueba(t, tx)
 	a := crearAlojamientoDePrueba(t, tx, nil)
 	inicio, fin := clock.Today().AddDate(0, 0, 5), clock.Today().AddDate(0, 0, 8)
-	tx.Create(&db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "pendiente", FechaInicio: &inicio, FechaFin: &fin})
+	reservaReal := db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "pendiente", FechaInicio: &inicio, FechaFin: &fin}
+	tx.Create(&reservaReal)
 	inicio2, fin2 := clock.Today().AddDate(0, 0, 20), clock.Today().AddDate(0, 0, 22)
-	tx.Create(&db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "confirmada", FechaInicio: &inicio2, FechaFin: &fin2, EsBloqueoAdmin: true})
+	bloqueo := db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "confirmada", FechaInicio: &inicio2, FechaFin: &fin2, EsBloqueoAdmin: true}
+	tx.Create(&bloqueo)
 
 	rec := httptest.NewRecorder()
 	h.listAdmin(rec, reqConParam(http.MethodGet, "/reservas", nil, nil))
 
 	var resp []reservaResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &resp)
-	if len(resp) != 1 {
-		t.Fatalf("esperaba 1 reserva (el bloqueo no cuenta), dio %d", len(resp))
+	if !contieneReservaID(resp, reservaReal.ID.String()) {
+		t.Fatal("la reserva real debería aparecer en el listado admin")
+	}
+	if contieneReservaID(resp, bloqueo.ID.String()) {
+		t.Fatal("un bloqueo manual NO debería aparecer en el listado admin de reservas")
 	}
 }
 
@@ -554,17 +574,22 @@ func TestListAdmin_FiltraPorEstado(t *testing.T) {
 	u := crearUsuarioDePrueba(t, tx)
 	a := crearAlojamientoDePrueba(t, tx, nil)
 	i1, f1 := clock.Today().AddDate(0, 0, 5), clock.Today().AddDate(0, 0, 8)
-	tx.Create(&db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "pendiente", FechaInicio: &i1, FechaFin: &f1})
+	pendiente := db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "pendiente", FechaInicio: &i1, FechaFin: &f1}
+	tx.Create(&pendiente)
 	i2, f2 := clock.Today().AddDate(0, 0, 20), clock.Today().AddDate(0, 0, 22)
-	tx.Create(&db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "confirmada", FechaInicio: &i2, FechaFin: &f2})
+	confirmada := db.Reserva{UsuarioID: u.ID, AlojamientoID: &a.ID, Tipo: "alojamiento", Estado: "confirmada", FechaInicio: &i2, FechaFin: &f2}
+	tx.Create(&confirmada)
 
 	rec := httptest.NewRecorder()
 	h.listAdmin(rec, reqConParam(http.MethodGet, "/reservas?estado=pendiente", nil, nil))
 
 	var resp []reservaResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &resp)
-	if len(resp) != 1 || resp[0].Estado != "pendiente" {
-		t.Fatalf("esperaba solo la pendiente, dio %d resultados", len(resp))
+	if !contieneReservaID(resp, pendiente.ID.String()) {
+		t.Fatal("la reserva pendiente debería aparecer con ?estado=pendiente")
+	}
+	if contieneReservaID(resp, confirmada.ID.String()) {
+		t.Fatal("la reserva confirmada NO debería aparecer con ?estado=pendiente")
 	}
 }
 

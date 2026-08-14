@@ -62,20 +62,34 @@ func TestResenaList_IdInvalidoDaBadRequest(t *testing.T) {
 
 // --- listAdmin ---
 
+// listAdmin no tiene scope (lista TODAS las reseñas admin-wide) — verifica
+// presencia de IDs propios en vez de un conteo total exacto, mismo criterio
+// que TestListAdmin_* en reservas_test.go (T12.10/T12.12 usan testdb.Shared
+// con filas realmente comprometidas por una ventana corta).
 func TestResenaListAdmin_IncluyeOcultas(t *testing.T) {
 	h, tx := newResenaHandler(t)
 	u := crearUsuarioDePrueba(t, tx)
 	a := crearAlojamientoDePrueba(t, tx, nil)
-	tx.Create(&db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 5, Texto: "Visible", Oculta: false})
-	tx.Create(&db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 1, Texto: "Oculta", Oculta: true})
+	visible := db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 5, Texto: "Visible", Oculta: false}
+	tx.Create(&visible)
+	oculta := db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 1, Texto: "Oculta", Oculta: true}
+	tx.Create(&oculta)
 
 	rec := httptest.NewRecorder()
 	h.listAdmin(rec, reqConParam(http.MethodGet, "/resenas", nil, nil))
 
 	var resp []resenaResponse
 	mustUnmarshal(t, rec.Body.Bytes(), &resp)
-	if len(resp) != 2 {
-		t.Fatalf("esperaba las 2 reseñas (incluida la oculta), dio %d", len(resp))
+	encontrada := func(id string) bool {
+		for _, r := range resp {
+			if r.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+	if !encontrada(visible.ID.String()) || !encontrada(oculta.ID.String()) {
+		t.Fatalf("esperaba ver las 2 reseñas propias (incluida la oculta) en el listado admin")
 	}
 }
 

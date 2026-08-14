@@ -96,6 +96,24 @@ func setup() (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("no se pudo conectar a la base de test: %w", err)
 	}
+
+	// `go test ./...` corre el binario de cada paquete en paralelo por
+	// default — con el pool de 20 conexiones de db.Connect (pensado para
+	// el servidor real) y ~8 paquetes con tests, eso son hasta 160
+	// conexiones posibles contra un Postgres con max_connections=100
+	// (default), lo que produce fallas intermitentes bajo carga completa
+	// (confirmado: la suite completa fallaba de forma flaky, pero nunca
+	// corriendo un paquete solo). Cada paquete de test acá nunca necesita
+	// más que un puñado de conexiones a la vez (como mucho un par de
+	// goroutines en los tests de concurrencia real, T12.10/T12.12), así
+	// que se achica el pool acá — no en db.Connect, que sigue sirviendo al
+	// servidor real sin este límite.
+	sqlDB, err := gdb.DB()
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo obtener *sql.DB de la conexión de test: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(5)
+
 	if err := db.RunMigrations(gdb); err != nil {
 		return nil, fmt.Errorf("no se pudo migrar la base de test: %w", err)
 	}
