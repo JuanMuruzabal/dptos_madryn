@@ -153,10 +153,16 @@ máquina de desarrollo donde casi siempre queda uno de una corrida anterior.
   recibe merges desde `dev` cuando se decide hacer un release.
 - **`dev`** — rama de integración de desarrollo. Todo el trabajo en curso
   converge acá antes de pasar a `main`.
-- **`feature/<nombre-corto>`** — una rama por feature nueva, sale de `dev`
-  y vuelve a `dev` por PR (p. ej. `feature/panel-admin-vehiculos`).
-- **`fix/<nombre-corto>`** — una rama por corrección de bug, mismo circuito
-  que `feature/*` (sale de `dev`, PR de vuelta a `dev`).
+- **`feature/<nombre-corto>`** — reservada para funcionalidades **grandes y
+  generales**, sale de `dev` y vuelve a `dev` por PR (p. ej.
+  `feature/editor`, `feature/panel-admin-vehiculos`). Agrupa varios
+  cambios relacionados bajo la misma rama en vez de abrir una rama nueva
+  por cada retoque puntual dentro de esa funcionalidad.
+- **`fix/<nombre-corto>`** — reservada para bugs **grandes**, mismo
+  circuito que `feature/*` (sale de `dev`, PR de vuelta a `dev`).
+- **Cambios chicos** (ajustes de UI, reordenar algo, un tweak puntual,
+  bugs menores) — commit directo a `dev`, sin abrir rama. No todo cambio
+  necesita su propia `feature/*`/`fix/*`.
 
 ```
 main  ──────────────────────●───────────────●──────  (releases)
