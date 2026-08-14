@@ -296,4 +296,108 @@ Si el cliente responde distinto a alguna de estas, el sprint afectado (ver colum
 
 ---
 
+## 12. Iniciativa transversal — Pipeline de CI: tests unitarios y quality gates
+
+> Agregada 2026-08-14, a pedido del cliente: pulir el pipeline de CI en 3 etapas — **Etapa 1: Run tests and quality gates** (esta sección), Etapa 2: análisis estático con SonarCloud, Etapa 3: deploy. Las etapas 2 y 3 quedan fuera de alcance por ahora — no planificadas en detalle, solo mencionadas para que quede registro del objetivo final. No es un requisito de la spec del producto (no mapea a un FR de la sección 4) — es una iniciativa de calidad de ingeniería sobre el código ya construido en Fase 1/2.
+
+### 12.0 Decisiones de arquitectura para esta fase
+
+Tres decisiones con alternativas reales, confirmadas con el cliente el 2026-08-14 — registradas también en `docs/tradeoffs.md` (TR-038/TR-039/TR-040):
+
+1. **Backend: Postgres real por transacción, no mocks de DB.** Cada test corre contra un Postgres efímero (el mismo `docker-compose.yml` en local, un service container en CI) dentro de una transacción que se revierte al final — aislado y rápido, sin mantener un mock sincronizado a mano con lo que GORM genera. Es la única forma de probar de verdad el exclusion constraint de reservas (TR-005) y el nuevo de vehículos (TR-010), que no se pueden simular con `go-sqlmock`. Usa una base de datos de test **separada** de la de desarrollo (nunca `turismo_marcuzzi`) — no repetir el incidente de esta semana donde un `docker compose down -v` borró datos reales.
+2. **Frontend: Vitest, no Jest.** Nativo ESM, mejor encaje con Turbopack/Next 16, coverage v8 con thresholds configurables sin herramienta extra.
+3. **Coverage del frontend: 80% sobre `lib/`, `app/actions/` y componentes cliente con lógica — NO sobre `app/**/page.tsx`/`layout.tsx`.** Los Server Components async no son unit-testeables de forma estándar (Testing Library no los renderiza); incluirlos en el denominador empujaría a escribir tests artificiales solo para inflar el número. Quedan mejor cubiertos por QA end-to-end (T5.4) que por unit tests.
+
+### 12.1 Estructura de archivos nuevos
+
+| Archivo/directorio | Tarea que lo crea |
+|---|---|
+| `apps/api/internal/testdb/testdb.go` (helper: conecta a Postgres de test, migra una vez, devuelve `*gorm.DB` transaccional por test) | T12.1 |
+| `apps/api/.env.test.example` (documenta `DATABASE_URL` de test) | T12.1 |
+| `apps/api/internal/clock/clock_test.go` (ya existe, se amplía) | T12.2 |
+| `apps/api/internal/auth/jwt_test.go` | T12.3 |
+| `apps/api/internal/config/config_test.go` | T12.4 |
+| `apps/api/internal/storage/local_test.go` | T12.5 |
+| `apps/api/internal/email/log_sender_test.go` | T12.6 |
+| `apps/api/internal/http/middleware_test.go` | T12.7 |
+| `apps/api/internal/http/auth_test.go` | T12.8 |
+| `apps/api/internal/http/alojamientos_test.go` | T12.9 |
+| `apps/api/internal/http/reservas_test.go` | T12.10 |
+| `apps/api/internal/http/resenas_test.go`, `bloqueos_test.go`, `contenido_test.go`, `imagenes_test.go` | T12.11 |
+| `apps/api/internal/reservas/expirer_test.go` | T12.12 |
+| `apps/web/vitest.config.ts`, `apps/web/vitest.setup.ts` | T12.14 |
+| `apps/web/src/lib/*.test.ts` (uno por módulo de `lib/`) | T12.15 |
+| `apps/web/src/lib/api.test.ts` | T12.16 |
+| `apps/web/src/app/actions/admin.test.ts` (y demás archivos de `actions/`) | T12.17 |
+| `apps/web/src/components/**/*.test.tsx` (LocationPicker, FotosManager, modal, account-menu, etc.) | T12.18 |
+| `.github/workflows/ci.yml` (modificado: nuevo job/steps "Run tests and quality gates") | T12.20 |
+| `README.md` (modificado: cómo correr tests localmente) | T12.21 |
+
+### 12.2 Sprint T-Backend — Tests unitarios Go (≈ 4 días)
+
+| ID | Tarea | Depende de | Esfuerzo | Criterio de aceptación |
+|---|---|---|---|---|
+| T12.1 | Helper `testdb`: conecta a Postgres de test (env var separada), corre `cmd/migrate` una vez por suite, devuelve una transacción por test (`t.Cleanup` hace rollback) | — | 1d | Dos tests que usan `testdb.New(t)` en paralelo no interfieren entre sí; correr la suite completa dos veces seguidas da el mismo resultado |
+| T12.2 | Tests de `internal/clock` (ya hay uno — ampliar a `ParseDate`, medianoche exacta, fin de año, forzar timezone) | — | 0.5d | Cobertura de `clock` ≥ 90% (es el módulo más crítico de negocio, FR-11) |
+| T12.3 | Tests de `internal/auth` (generar/parsear JWT, expiración, firma inválida, rol embebido) | — | 0.5d | Un token expirado y uno con firma alterada fallan `ParseToken` con error distinguible |
+| T12.4 | Tests de `internal/config` (defaults sin env vars, override por env var) | — | 0.25d | Cobertura de `config` ≥ 90% |
+| T12.5 | Tests de `internal/storage.LocalStorage` (guarda archivo, nombre único por UUID, URL resultante) | — | 0.5d | Guardar dos archivos con el mismo nombre original no colisiona |
+| T12.6 | Tests de `internal/email.LogSender` (no devuelve error, loguea los datos esperados) | — | 0.25d | Cobertura de `email` ≥ 80% |
+| T12.7 | Tests de `internal/http/middleware.go` (`requireAuth`/`requireRole`: sin token, token inválido, expirado, rol incorrecto, rol correcto) con `httptest` | T12.3 | 0.5d | Los 5 casos devuelven el status code correcto (401/403/200) |
+| T12.8 | Tests de `internal/http/auth.go` (register: email duplicado, password corto; login: password incorrecto, éxito) | T12.1 | 1d | Cobertura de `auth.go` ≥ 80% |
+| T12.9 | Tests de `internal/http/alojamientos.go` — el archivo más grande: `create`/`update`/`list`/`get`/`deactivate`/`activate`/`validate()`, `uploadFoto` (límite de 10, tipos permitidos, límite de tamaño foto vs. video), `reordenarFotos`, `uploadPortada` (desmarca portada anterior) | T12.1 | 3.5d | Cobertura de `alojamientos.go` ≥ 80%; test explícito del bug de GORM ya encontrado (TR-035: `Activo:false` en `Create()` con `borrador:true` debe persistir `false`, no `true`) como regresión |
+| T12.10 | Tests de `internal/http/reservas.go` (crear con `validateContacto`, exclusion constraint de solapamiento con un test de dos inserts concurrentes, `actualizarEstado`, `actualizarDatos`, cálculo de `Total`) | T12.1 | 2d | Test de concurrencia real: dos goroutines insertando reservas solapadas sobre el mismo alojamiento, exactamente una tiene éxito (mismo criterio que T0.3 en Fase 1) |
+| T12.11 | Tests de `resenas.go`, `bloqueos.go` (constraint de bloqueo vs. reserva real), `contenido.go`, `imagenes.go` (upsert `clause.OnConflict`) | T12.1 | 1.5d | Cobertura de cada archivo ≥ 80% |
+| T12.12 | Tests de `internal/reservas/expirer.go` (borra pendientes vencidas por TTL, no toca confirmadas ni pendientes vigentes) | T12.1, T12.2 | 0.5d | Test con reloj inyectado que simula el paso del tiempo, sin `time.Sleep` real |
+| T12.13 | Medir coverage real (`go test ./... -coverprofile`), identificar huecos, completar hasta 80% global | T12.2–T12.12 | 1d (buffer) | `go tool cover -func=coverage.out` reporta ≥ 80% en `total:` |
+
+### 12.3 Sprint T-Frontend — Tests unitarios TypeScript (≈ 4.5 días)
+
+| ID | Tarea | Depende de | Esfuerzo | Criterio de aceptación |
+|---|---|---|---|---|
+| T12.14 | Instalar y configurar Vitest + `@vitest/coverage-v8` + Testing Library + jsdom; `vitest.config.ts` con alias `@/*`, `coverage.thresholds` en 80% (líneas/funciones/branches/statements) sobre el alcance de 12.0.3; mocks base de `next/navigation`/`next/headers` | — | 1d | `pnpm --filter web test` corre y reporta coverage; un test dummy que falla el threshold rompe el comando (verificar bajándolo a propósito una vez) |
+| T12.15 | Tests de `lib/` puro: `currency.ts`, `contacto.ts`, `jwt.ts` (decode), `reserva-urgencia.ts`, `notificaciones-cerradas.ts`, `scenes.ts`/`categories.ts`, `placeholder-gradient.ts` | T12.14 | 1.5d | Cobertura de cada archivo ≥ 90% (son funciones puras, sin excusa para huecos) |
+| T12.16 | Tests de `lib/api.ts` (mockear `fetch` global — éxito, error de red, error 4xx/5xx mapeado a `ApiResult`) — el archivo más grande de `lib/` | T12.14 | 2d | Cobertura de `api.ts` ≥ 80% |
+| T12.17 | Tests de `lib/session.ts` (mock de `cookies()`) y de `app/actions/*.ts` (mockeando `lib/api`/`lib/session` — validaciones, mapeo de error, `revalidatePath` llamado con los paths correctos) | T12.14, T12.16 | 2d | Cobertura de `app/actions/` ≥ 80% |
+| T12.18 | Tests de componentes cliente con lógica real (Testing Library): `LocationPicker` (`coordsIniciales`, fallback a Puerto Madryn), `FotosManager` (reordenar array, límite de 10, slot vacío dispara input), `modal.tsx`, `account-menu.tsx`, `notifications-bell-client.tsx`, `alojamiento-baja-button.tsx` | T12.14 | 3d | Cobertura de cada componente listado ≥ 80% |
+| T12.19 | Medir coverage real sobre el alcance de 12.0.3, identificar huecos, completar hasta 80% | T12.15–T12.18 | 1d (buffer) | Reporte de Vitest coverage ≥ 80% en el alcance definido (excluyendo `page.tsx`/`layout.tsx`) |
+
+### 12.4 Sprint T-CI — Integración al pipeline (≈ 1.5 días)
+
+| ID | Tarea | Depende de | Esfuerzo | Criterio de aceptación |
+|---|---|---|---|---|
+| T12.20 | `.github/workflows/ci.yml`: agregar Postgres como `services:` (imagen `postgres:16`, `btree_gist` vía el propio `cmd/migrate`) + step de test+coverage para `api` (falla si < 80%) y para `web` (falla si < 80%, usando el `coverage.thresholds` de T12.14) — job(s) agrupados bajo el nombre "Run tests and quality gates" (Etapa 1 del pipeline de 3 etapas) | T12.13, T12.19 | 1d | Un PR que baja el coverage a propósito (revertir un test) hace fallar el check en GitHub; un PR limpio pasa igual que hoy |
+| T12.21 | Documentar en `README.md` cómo correr los tests localmente (comandos nuevos, `DATABASE_URL` de test separada) | T12.20 | 0.5d | Un desarrollador nuevo puede correr la suite completa siguiendo solo el README, sin preguntar |
+
+### 12.5 Camino crítico
+
+```
+T12.1 → T12.8/T12.9/T12.10/T12.11/T12.12 → T12.13 ─┐
+T12.14 → T12.16 → T12.17 → T12.19 ──────────────────┼→ T12.20 → T12.21
+                            T12.18 ──────────────────┘
+```
+
+Backend y frontend son totalmente paralelizables entre sí (no comparten código) — con dos personas, esta iniciativa completa toma ~5 días en vez de ~10. T12.9 (alojamientos.go) y T12.16 (api.ts) son los cuellos de botella de cada lado por ser los archivos más grandes con más lógica de negocio acumulada (TR-034 a TR-037 recién agregaron bastante código ahí).
+
+### 12.6 Riesgos y mitigaciones
+
+| # | Riesgo | Impacto | Mitigación |
+|---|---|---|---|
+| R11 | 80% es un número arbitrario que puede empujar a escribir tests de relleno (probar getters triviales) solo para subir el porcentaje, sin valor real de detección de bugs | Medio | Priorizar los módulos de mayor riesgo de negocio primero (`clock`, `auth`, `alojamientos.go`, `reservas.go` — TR-005/TR-010) tal como está ordenado este plan; si sobra margen antes de llegar a 80%, taparlo con los archivos más chicos/triviales al final, no al revés |
+| R12 | Postgres de test compartiendo el mismo `docker-compose.yml`/credenciales que desarrollo, corriendo por error contra la DB real | Alto — ya pasó una vez esta semana con datos reales (ver sesión 2026-08-13) | `DATABASE_URL` de test usa un nombre de base **distinto** (`turismo_marcuzzi_test`, nunca `turismo_marcuzzi`) documentado en `apps/api/.env.test.example`; el helper `testdb` valida el nombre de la base al conectar y aborta si no termina en `_test`, como red de seguridad adicional |
+| R13 | El coverage gate del 80% rompe CI en el primer PR después de mergear esta iniciativa si algún módulo queda justo debajo del umbral | Medio | T12.13/T12.19 son buffers explícitos para cerrar huecos antes de activar el gate en T12.20 — el gate se activa recién cuando la suite ya mide ≥ 80% localmente, no antes |
+| R14 | Tests de concurrencia real (T12.10, dos goroutines insertando reservas solapadas) son inherentemente más lentos/flaky que tests puros | Bajo | Timeout generoso explícito en ese test puntual (no en toda la suite); si se vuelve flaky en CI, correrlo con `-count=5` en un job separado antes de mergear el gate, no bloquear todo el pipeline por un test |
+
+### 12.7 Criterios de salida de esta fase
+
+- [ ] `go test ./... -coverprofile=coverage.out` en `apps/api` reporta ≥ 80% de coverage total.
+- [ ] `pnpm --filter web test -- --coverage` en `apps/web` reporta ≥ 80% sobre el alcance definido en 12.0.3.
+- [ ] Los tests de concurrencia (T12.10) confirman que el exclusion constraint de reservas sigue rechazando solapamientos con datos reales, no mockeados.
+- [ ] El test de regresión del bug de GORM (T12.9, TR-035) existe y falla si alguien revierte el fix.
+- [ ] `.github/workflows/ci.yml` tiene un job "Run tests and quality gates" que falla el PR si cualquiera de los dos coverage cae debajo de 80%.
+- [ ] `README.md` documenta cómo correr la suite completa localmente.
+- [ ] Decisiones de esta sección registradas en `docs/tradeoffs.md` (TR-038/TR-039/TR-040).
+
+---
+
 *Documento vivo — actualizar cuando se confirmen las decisiones de la sección 10 de la spec o cambie el alcance.*
