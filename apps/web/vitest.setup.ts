@@ -10,3 +10,31 @@ import "@testing-library/jest-dom/vitest";
 // entorno de test de Node ya "es" el servidor en este sentido, así que
 // no-opearlo acá es fiel a la intención real del paquete, no un parche.
 vi.mock("server-only", () => ({}));
+
+// jsdom no implementa IntersectionObserver ni matchMedia — framer-motion
+// los usa para whileInView (ScrollReveal) y useReducedMotion (Hero,
+// ScrollReveal) respectivamente. Sin esto, cualquier componente que
+// renderice un <motion.*> revienta con "IntersectionObserver is not
+// defined" o "matchMedia is not a function" apenas monta.
+class IntersectionObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+vi.stubGlobal("IntersectionObserver", IntersectionObserverStub);
+
+if (!window.matchMedia) {
+  window.matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }) as unknown as MediaQueryList;
+}
