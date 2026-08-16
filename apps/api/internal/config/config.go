@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"strings"
 )
 
 // Config agrupa todo lo que el backend necesita para arrancar.
@@ -12,10 +13,24 @@ type Config struct {
 	JWTSecret string
 	Env       string
 	// UploadsDir/UploadsBaseURL configuran el Storage local de desarrollo
-	// (internal/storage) — ver TR-013 en docs/tradeoffs.md. En producción,
-	// con R2/S3 configurado, estas quedan sin uso.
+	// (internal/storage) — ver TR-013 en docs/tradeoffs.md. Se usan solo
+	// si R2AccountID/R2Bucket no están seteados (ver abajo).
 	UploadsDir     string
 	UploadsBaseURL string
+	// R2AccountID/R2AccessKeyID/R2SecretAccessKey/R2Bucket/R2PublicURL
+	// (TR-041) — con R2Bucket configurado, cmd/api/main.go usa R2Storage
+	// en vez de LocalStorage. Vacíos por defecto: sin esto seteado, el
+	// comportamiento de desarrollo local no cambia.
+	R2AccountID       string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+	R2Bucket          string
+	R2PublicURL       string
+	// CORSAllowedOrigins — orígenes desde los que el navegador puede
+	// llamar directo a la API (no afecta las llamadas server-to-server de
+	// Next.js vía Server Actions/Components, que no pasan por CORS). En
+	// producción, la URL pública del servicio web de Render.
+	CORSAllowedOrigins []string
 }
 
 // Load lee la configuración desde variables de entorno, con valores por
@@ -29,6 +44,14 @@ func Load() Config {
 		Env:            getEnv("APP_ENV", "development"),
 		UploadsDir:     getEnv("UPLOADS_DIR", "./uploads"),
 		UploadsBaseURL: getEnv("UPLOADS_BASE_URL", "http://localhost:"+port+"/uploads"),
+
+		R2AccountID:       getEnv("R2_ACCOUNT_ID", ""),
+		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
+		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", ""),
+		R2Bucket:          getEnv("R2_BUCKET", ""),
+		R2PublicURL:       getEnv("R2_PUBLIC_URL", ""),
+
+		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
 	}
 }
 
@@ -37,4 +60,26 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// getEnvList lee una lista separada por comas (p. ej.
+// "https://a.com,https://b.com") — se usa para CORS_ALLOWED_ORIGINS,
+// donde en producción puede hacer falta más de un origen (p. ej. un
+// dominio propio y el subdominio *.onrender.com mientras se migra el DNS).
+func getEnvList(key string, fallback []string) []string {
+	raw, ok := os.LookupEnv(key)
+	if !ok || raw == "" {
+		return fallback
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	if len(out) == 0 {
+		return fallback
+	}
+	return out
 }
