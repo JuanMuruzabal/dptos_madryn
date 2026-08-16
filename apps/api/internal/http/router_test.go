@@ -24,7 +24,7 @@ func newTestRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	return NewRouter(tx, testSecret, store, t.TempDir(), email.LogSender{})
+	return NewRouter(tx, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"})
 }
 
 func TestNewRouter_HealthCheckConDB(t *testing.T) {
@@ -47,7 +47,7 @@ func TestNewRouter_HealthCheckSinDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	router := NewRouter(nil, testSecret, store, t.TempDir(), email.LogSender{})
+	router := NewRouter(nil, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
@@ -91,7 +91,7 @@ func TestNewRouter_SirveArchivosDeUploads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	router := NewRouter(nil, testSecret, store, uploadsDir, email.LogSender{})
+	router := NewRouter(nil, testSecret, store, uploadsDir, email.LogSender{}, []string{"http://localhost:3000"})
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/uploads/test.txt", nil))
