@@ -31,8 +31,14 @@ func main() {
 		log.Fatalf("error conectando a la base de datos: %v", err)
 	}
 
-	// TR-013: disco local hasta que haya credenciales reales de R2/S3.
-	store, err := storage.NewLocalStorage(cfg.UploadsDir, cfg.UploadsBaseURL)
+	// TR-041: con R2_BUCKET configurado (producción/Render), sube a
+	// Cloudflare R2 — sin eso (desarrollo local, TR-013), sigue en disco.
+	var store storage.Storage
+	if cfg.R2Bucket != "" {
+		store, err = storage.NewR2Storage(context.Background(), cfg.R2AccountID, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2Bucket, cfg.R2PublicURL)
+	} else {
+		store, err = storage.NewLocalStorage(cfg.UploadsDir, cfg.UploadsBaseURL)
+	}
 	if err != nil {
 		log.Fatalf("error inicializando storage de fotos: %v", err)
 	}
@@ -41,7 +47,7 @@ func main() {
 	// mandar de verdad — ver internal/email.
 	sender := email.LogSender{}
 
-	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender)
+	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender, cfg.CORSAllowedOrigins)
 
 	// T3.5/T3.7/TR-015/TR-016: barrido de reservas 'pendiente' vencidas
 	// (5 min sin contactar, o 2h contactadas sin confirmar). Cada 30s, no

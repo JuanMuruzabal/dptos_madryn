@@ -21,8 +21,10 @@ import (
 // es la carpeta física que sirve /uploads cuando store es LocalStorage
 // (TR-013 en docs/tradeoffs.md) — servirla acá, no en LocalStorage, para
 // que el router siga siendo el único lugar que sabe de rutas HTTP; sender
-// manda los emails transaccionales de T3.3 (TR-014).
-func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir string, sender email.Sender) http.Handler {
+// manda los emails transaccionales de T3.3 (TR-014); corsOrigins son los
+// orígenes permitidos para llamadas directas del navegador (config.Config.
+// CORSAllowedOrigins, TR-041).
+func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir string, sender email.Sender, corsOrigins []string) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -40,8 +42,7 @@ func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir 
 	// normales, sin archivo, terminan en milisegundos igual).
 	r.Use(middleware.Timeout(5 * time.Minute))
 	r.Use(cors.Handler(cors.Options{
-		// TODO: restringir a los orígenes reales del frontend antes de producción.
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   corsOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,

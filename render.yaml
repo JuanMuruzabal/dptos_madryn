@@ -1,0 +1,94 @@
+# Blueprint de Render (Infrastructure as Code) — define los 3 servicios
+# de producción como código versionado: la base de datos administrada, la
+# API (Go, Docker) y el frontend (Next.js, Docker). Los VALORES de los
+# secrets nunca viven acá — cada envVar con `sync: false` se carga a mano,
+# una sola vez, desde el dashboard de Render al aplicar este blueprint
+# (New + → Blueprint → conectar este repo). Ver README.md "Deploy" para
+# la guía paso a paso completa.
+#
+# Nota TR-041 (docs/tradeoffs.md): el storage de fotos en producción es
+# Cloudflare R2, no el disco local que usa desarrollo/docker-compose.yml
+# (TR-013) — los contenedores de Render son efímeros, un redeploy sin R2
+# configurado perdería todas las fotos subidas.
+
+databases:
+  - name: turismo-marcuzzi-db
+    databaseName: turismo_marcuzzi
+    user: turismo
+    plan: free
+    # Postgres 16 — misma versión que docker-compose.yml/CI, así btree_gist
+    # y el resto del esquema se comportan igual en los tres entornos.
+    postgresMajorVersion: "16"
+
+services:
+  # --- Backend Go (apps/api) ---
+  - type: web
+    name: turismo-marcuzzi-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: apps/api
+    plan: free
+    healthCheckPath: /health
+    # Corre el binario de migración (idempotente, T0.3) ANTES de que el
+    # deploy se dé por sano y reciba tráfico — mismo rol que el servicio
+    # `migrate` de docker-compose.yml, pero sin un servicio aparte.
+    preDeployCommand: /app/migrate
+    envVars:
+      - key: PORT
+        value: "8080" # tiene que matchear EXPOSE 8080 de apps/api/Dockerfile
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: turismo-marcuzzi-db
+          property: connectionString
+      # generateValue: Render genera un secreto aleatorio la primera vez
+      # y lo guarda — nadie (ni nosotros acá) llega a verlo en texto plano.
+      - key: JWT_SECRET
+        generateValue: true
+      # CORS_ALLOWED_ORIGINS: URL pública del servicio web de abajo. Si
+      # renombrás el servicio web o le conectás un dominio propio, hay que
+      # actualizar esto a mano (Render no permite interpolar la URL de
+      # otro servicio dentro de un string literal en el blueprint).
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://turismo-marcuzzi-web.onrender.com
+      # R2 (TR-041) — bucket, credenciales y URL pública de Cloudflare R2.
+      # Con R2_BUCKET seteado, cmd/api/main.go usa R2Storage en vez de
+      # LocalStorage automáticamente (no hace falta ningún otro toggle).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+
+  # --- Frontend Next.js (apps/web) ---
+  - type: web
+    name: turismo-marcuzzi-web
+    runtime: docker
+    dockerfilePath: apps/web/Dockerfile
+    # Contexto en la raíz del repo (no apps/web) — el build depende de
+    # packages/shared-types vía "workspace:*", ver el comentario al
+    # principio de apps/web/Dockerfile.
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: PORT
+        value: "3000" # ya viene seteado en el Dockerfile (ENV PORT=3000), explícito acá igual
+      # URL pública del servicio de arriba — Next.js (Server Actions/
+      # Components) le habla a la API server-to-server con esto, nunca
+      # desde el navegador. Mismo comentario que CORS_ALLOWED_ORIGINS
+      # sobre actualizarlo a mano si cambia el nombre del servicio.
+      - key: API_URL
+        value: https://turismo-marcuzzi-api.onrender.com
+      # No son secrets de seguridad — sync: false simplemente porque acá
+      # no sabemos el WhatsApp/email real del cliente, hay que cargar el
+      # dato de verdad una vez (reemplaza los placeholders de desarrollo).
+      - key: CONTACTO_WHATSAPP
+        sync: false
+      - key: CONTACTO_EMAIL
+        sync: false

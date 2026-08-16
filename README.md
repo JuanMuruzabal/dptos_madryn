@@ -211,8 +211,9 @@ pull request) con cuatro jobs independientes, en paralelo:
   `apps/web/vitest.config.mts` hace fallar el comando por debajo de 80%.
 
 `test-api`/`test-web` son la Etapa 1 de un pipeline pensado en 3 etapas
-(Etapa 2: análisis estático con SonarCloud; Etapa 3: deploy — ninguna de
-las dos implementada todavía, ver `docs/implementation-plan.md` §12).
+(Etapa 2: análisis estático con SonarCloud, salteada por decisión del
+cliente; Etapa 3: deploy, ver sección "Deploy" abajo — ver
+`docs/implementation-plan.md` §12).
 
 Antes de abrir un PR, correr localmente el mismo pipeline que corre CI
 (los comandos de arriba, en el mismo orden, incluyendo esta sección de
@@ -221,6 +222,49 @@ los tipos de rutas de Next (`next typegen`) antes de tipar, porque un
 checkout limpio (como el de CI) no tiene un `.next/` con esos tipos
 generado todavía a diferencia de una máquina de desarrollo donde casi
 siempre queda uno de una corrida anterior.
+
+## Deploy
+
+Producción corre en [Render](https://render.com) — Postgres administrado
++ los dos `Dockerfile` ya existentes (mismas imágenes que
+`docker-compose.yml`, sin una segunda definición de build paralela). Todo
+la topología vive versionada en [`render.yaml`](render.yaml) (Blueprint,
+Infrastructure as Code) en la raíz del repo — decisión completa con sus
+alternativas en TR-042 (`docs/tradeoffs.md`).
+
+**Los valores de los secrets nunca están en el repo.** `render.yaml` solo
+declara qué variables existen; cada una marcada `sync: false` se carga
+una única vez desde el dashboard de Render al aplicar el blueprint (o
+`generateValue: true` para `JWT_SECRET`, que Render genera y guarda solo,
+sin que nadie lo vea en texto plano).
+
+### Antes de desplegar por primera vez
+
+1. **Bucket de Cloudflare R2** (TR-041 — storage de fotos en producción,
+   reemplaza el disco local de desarrollo/TR-013 porque los contenedores
+   de Render son efímeros): crear un bucket en el dashboard de Cloudflare
+   → R2 Object Storage, habilitar acceso público (r2.dev o un dominio
+   propio), y generar un API Token con permiso *Object Read & Write*
+   (`Access Key ID` + `Secret Access Key`). Guardar junto con el
+   `Account ID`, el nombre del bucket y la URL pública — van al dashboard
+   de Render en el paso 3, nunca al repo.
+2. **Cuenta de Render** conectada al repo de GitHub (`New +` → `Blueprint`
+   → elegir este repo → Render detecta `render.yaml` solo y muestra un
+   preview de los 3 servicios antes de crear nada).
+3. **Cargar los secrets** que el blueprint dejó pendientes
+   (`sync: false`) en cada servicio, pestaña *Environment*:
+   - `turismo-marcuzzi-api`: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+     `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (del paso 1).
+   - `turismo-marcuzzi-web`: `CONTACTO_WHATSAPP`, `CONTACTO_EMAIL` (los
+     datos reales del cliente, reemplazan los placeholders de desarrollo).
+4. Deploy. El primer request a `/health` puede tardar (plan free duerme
+   los servicios sin tráfico — cold start) — no es un error.
+
+Si algún día cambia el nombre de un servicio o se conecta un dominio
+propio, `CORS_ALLOWED_ORIGINS` (en `turismo-marcuzzi-api`) y `API_URL`
+(en `turismo-marcuzzi-web`) están hardcodeados en `render.yaml` a las
+URLs `*.onrender.com` por defecto — actualizarlos a mano (Render no
+permite interpolar la URL de un servicio dentro de otro en el blueprint).
 
 ## Flujo de ramas
 

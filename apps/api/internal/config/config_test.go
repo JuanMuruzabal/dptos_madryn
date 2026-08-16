@@ -29,6 +29,12 @@ func TestLoad_DefaultsSinVariablesDeEntorno(t *testing.T) {
 	if cfg.UploadsBaseURL != "http://localhost:8080/uploads" {
 		t.Errorf("UploadsBaseURL = %q, esperaba %q", cfg.UploadsBaseURL, "http://localhost:8080/uploads")
 	}
+	if cfg.R2Bucket != "" || cfg.R2AccountID != "" || cfg.R2AccessKeyID != "" || cfg.R2SecretAccessKey != "" || cfg.R2PublicURL != "" {
+		t.Errorf("los campos R2 deberían estar vacíos por defecto (sigue en LocalStorage), cfg = %+v", cfg)
+	}
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
+		t.Errorf("CORSAllowedOrigins = %v, esperaba [\"http://localhost:3000\"]", cfg.CORSAllowedOrigins)
+	}
 }
 
 func TestLoad_VariablesDeEntornoPisanLosDefaults(t *testing.T) {
@@ -58,6 +64,81 @@ func TestLoad_VariablesDeEntornoPisanLosDefaults(t *testing.T) {
 	}
 	if cfg.UploadsBaseURL != "https://cdn.example.com/uploads" {
 		t.Errorf("UploadsBaseURL = %q, esperaba el valor de UPLOADS_BASE_URL, no uno derivado de PORT", cfg.UploadsBaseURL)
+	}
+}
+
+func TestLoad_VariablesDeR2PisanLosDefaults(t *testing.T) {
+	t.Setenv("R2_ACCOUNT_ID", "acc123")
+	t.Setenv("R2_ACCESS_KEY_ID", "key123")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "secret123")
+	t.Setenv("R2_BUCKET", "turismo-marcuzzi-uploads")
+	t.Setenv("R2_PUBLIC_URL", "https://pub-xxxx.r2.dev")
+
+	cfg := Load()
+
+	if cfg.R2AccountID != "acc123" {
+		t.Errorf("R2AccountID = %q, esperaba %q", cfg.R2AccountID, "acc123")
+	}
+	if cfg.R2AccessKeyID != "key123" {
+		t.Errorf("R2AccessKeyID = %q, esperaba %q", cfg.R2AccessKeyID, "key123")
+	}
+	if cfg.R2SecretAccessKey != "secret123" {
+		t.Errorf("R2SecretAccessKey = %q, esperaba %q", cfg.R2SecretAccessKey, "secret123")
+	}
+	if cfg.R2Bucket != "turismo-marcuzzi-uploads" {
+		t.Errorf("R2Bucket = %q, esperaba %q", cfg.R2Bucket, "turismo-marcuzzi-uploads")
+	}
+	if cfg.R2PublicURL != "https://pub-xxxx.r2.dev" {
+		t.Errorf("R2PublicURL = %q, esperaba %q", cfg.R2PublicURL, "https://pub-xxxx.r2.dev")
+	}
+}
+
+func TestLoad_CORSAllowedOriginsConUnValor(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://turismomarcuzzi.com.ar")
+
+	cfg := Load()
+
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "https://turismomarcuzzi.com.ar" {
+		t.Errorf("CORSAllowedOrigins = %v, esperaba [\"https://turismomarcuzzi.com.ar\"]", cfg.CORSAllowedOrigins)
+	}
+}
+
+func TestLoad_CORSAllowedOriginsConVariosValoresSeparadosPorComa(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://a.com, https://b.com,https://c.com")
+
+	cfg := Load()
+
+	want := []string{"https://a.com", "https://b.com", "https://c.com"}
+	if len(cfg.CORSAllowedOrigins) != len(want) {
+		t.Fatalf("CORSAllowedOrigins = %v, esperaba %v", cfg.CORSAllowedOrigins, want)
+	}
+	for i, w := range want {
+		if cfg.CORSAllowedOrigins[i] != w {
+			t.Errorf("CORSAllowedOrigins[%d] = %q, esperaba %q", i, cfg.CORSAllowedOrigins[i], w)
+		}
+	}
+}
+
+func TestLoad_CORSAllowedOriginsVacioUsaElDefault(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", "")
+
+	cfg := Load()
+
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
+		t.Errorf("CORSAllowedOrigins = %v, esperaba el default", cfg.CORSAllowedOrigins)
+	}
+}
+
+// Un valor con solo comas/espacios ("  , ,  ") no debería producir una
+// lista vacía silenciosa (CORS bloquearía TODO origen sin decir por qué)
+// — cae al default en vez de eso.
+func TestLoad_CORSAllowedOriginsSoloComasYEspaciosUsaElDefault(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", "  , , ")
+
+	cfg := Load()
+
+	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
+		t.Errorf("CORSAllowedOrigins = %v, esperaba el default", cfg.CORSAllowedOrigins)
 	}
 }
 
