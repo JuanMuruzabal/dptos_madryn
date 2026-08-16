@@ -238,6 +238,13 @@ una única vez desde el dashboard de Render al aplicar el blueprint (o
 `generateValue: true` para `JWT_SECRET`, que Render genera y guarda solo,
 sin que nadie lo vea en texto plano).
 
+> ⚠️ **`turismo-marcuzzi-db` está en el plan `free` de Postgres a
+> propósito** (decisión del cliente, 2026-08-16, mientras se prueba el
+> deploy sin datos reales todavía) — **se borra solo a los 30 días de
+> creado**, no es una degradación de performance. Subir a `starter` (o
+> superior) en el dashboard de Render **antes de la primera reserva real
+> cargada**, no antes.
+
 ### Antes de desplegar por primera vez
 
 1. **Bucket de Cloudflare R2** (TR-041 — storage de fotos en producción,

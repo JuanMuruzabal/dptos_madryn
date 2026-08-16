@@ -15,6 +15,12 @@ databases:
   - name: turismo-marcuzzi-db
     databaseName: turismo_marcuzzi
     user: turismo
+    # ⚠️ TEMPORAL (decisión del cliente, 2026-08-16): plan free mientras
+    # se prueba el deploy de punta a punta, todavía sin datos reales de
+    # clientes. El plan free de Postgres en Render SE BORRA SOLO a los 30
+    # días de creado (no es una degradación, es borrado total de la base).
+    # Subir a "starter" (o superior) ANTES de la primera reserva real
+    # cargada — no antes, no hay nada que perder todavía; no después.
     plan: free
     # Postgres 16 — misma versión que docker-compose.yml/CI, así btree_gist
     # y el resto del esquema se comportan igual en los tres entornos.
