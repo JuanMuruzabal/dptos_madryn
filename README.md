@@ -120,31 +120,107 @@ pnpm run build:web            # next build
 pnpm run lint:web             # eslint
 pnpm run typecheck:web        # next typegen && tsc --noEmit
 pnpm run typecheck:shared-types
+pnpm run test:web             # vitest run — ver sección "Tests" más abajo
+pnpm run test:coverage:web
 
 pnpm run dev:api              # go run ./cmd/api
 pnpm run build:api            # go build ./...
 pnpm run vet:api              # go vet ./...
 pnpm run migrate:api          # go run ./cmd/migrate (idempotente)
+pnpm run test:api             # go test ./internal/... — ver sección "Tests"
+pnpm run test:coverage:api
 ```
 
 Lint de Go (no tiene atajo en `package.json`, correr dentro de
 `apps/api`): `golangci-lint run ./...`.
 
+## Tests
+
+Suite de tests unitarios para ambos lados, con un piso de **80% de code
+coverage** (statements/branches/functions/lines) que CI hace cumplir —
+ver "Integración continua" más abajo. `docs/implementation-plan.md` §12
+tiene el detalle completo de cómo se armó esta suite (decisiones,
+sprints, riesgos); acá solo los comandos para correrla.
+
+### Backend (Go)
+
+Los tests de `apps/api` usan **Postgres real, no mocks** (TR-038 en
+`docs/tradeoffs.md`) — GORM genera queries que un mock hay que
+sincronizar a mano, y el exclusion constraint de reservas (ver arriba)
+no se puede simular con sentido de otra forma. `internal/testdb` conecta
+a una base separada de la de desarrollo y la crea/migra sola si hace
+falta; cada test corre en su propia transacción que se revierte al
+terminar, así que no hace falta limpiar nada a mano entre corridas.
+
+1. Postgres tiene que estar corriendo (alcanza con `docker compose up -d
+   postgres`, no hace falta levantar `api`/`web`/`migrate`).
+2. La base de test se resuelve de `TEST_DATABASE_URL` — el default ya
+   apunta a `turismo_marcuzzi_test` en el mismo Postgres de
+   `docker-compose.yml`, así que la mayoría de los casos no necesita
+   configurar nada. Para un valor distinto, copiar
+   [`apps/api/.env.test.example`](apps/api/.env.test.example) a
+   `apps/api/.env.test`.
+3. Correr desde la raíz:
+   ```bash
+   pnpm run test:api            # go test ./internal/...
+   pnpm run test:coverage:api   # + coverage, imprime el % total al final
+   ```
+   `-race` (detector de condiciones de carrera) no está en el script de
+   arriba porque alarga bastante la corrida — CI sí lo usa siempre; para
+   correrlo local: `cd apps/api && go test ./internal/... -race`.
+
+**IMPORTANTE**: el nombre de la base en `TEST_DATABASE_URL` tiene que
+terminar en `_test` — `internal/testdb` lo valida y aborta si no, para
+que nunca sea posible correr la suite contra la base de desarrollo o
+producción por accidente (ya pasó una vez, 2026-08-13, aunque por un
+`docker compose down -v` manual, no por tests).
+
+### Frontend (Next.js/TypeScript)
+
+Vitest 4 + Testing Library + jsdom (TR-039 en `docs/tradeoffs.md`, sin
+Postgres ni backend de por medio — todo mockeado a nivel de
+`fetch`/Server Actions). No hace falta nada levantado de antemano.
+
+```bash
+pnpm run test:web             # vitest run
+pnpm run test:coverage:web    # + coverage (falla si algún indicador < 80%)
+```
+
+Alcance del gate de coverage (TR-040): excluye `src/app/**/page.tsx` y
+`layout.tsx` — son Server Components async, no unit-testeables vía
+Testing Library/jsdom; van a quedar cubiertos por tests end-to-end más
+adelante (`docs/implementation-plan.md` T5.4), no por esta suite.
+
+Para iterar rápido en un archivo puntual: `pnpm --filter
+@turismo-marcuzzi/web test <patrón del archivo>` (modo watch:
+`pnpm --filter @turismo-marcuzzi/web test:watch`).
+
 ## Integración continua
 
-`.github/workflows/ci.yml` corre en cada push/PR a `main` con dos jobs
-independientes:
+`.github/workflows/ci.yml` corre en cada push a `main` (y en cualquier
+pull request) con cuatro jobs independientes, en paralelo:
 
 - **`api`**: `go vet`, `golangci-lint`, `go build`.
 - **`web`**: `eslint`, `next typegen && tsc --noEmit`, typecheck de
   `packages/shared-types`, `next build`.
+- **`test-api`** ("Run tests and quality gates (api)"): los tests de Go
+  contra un Postgres real levantado como `services:` del job, con
+  coverage — falla el build si el total baja de 80%.
+- **`test-web`** ("Run tests and quality gates (web)"): la suite de
+  Vitest con coverage — el propio `coverage.thresholds` de
+  `apps/web/vitest.config.mts` hace fallar el comando por debajo de 80%.
+
+`test-api`/`test-web` son la Etapa 1 de un pipeline pensado en 3 etapas
+(Etapa 2: análisis estático con SonarCloud; Etapa 3: deploy — ninguna de
+las dos implementada todavía, ver `docs/implementation-plan.md` §12).
 
 Antes de abrir un PR, correr localmente el mismo pipeline que corre CI
-(los comandos de arriba, en el mismo orden) evita sorpresas — en
-particular, `pnpm run typecheck:web` genera los tipos de rutas de Next
-(`next typegen`) antes de tipar, porque un checkout limpio (como el de CI)
-no tiene un `.next/` con esos tipos generado todavía a diferencia de una
-máquina de desarrollo donde casi siempre queda uno de una corrida anterior.
+(los comandos de arriba, en el mismo orden, incluyendo esta sección de
+Tests) evita sorpresas — en particular, `pnpm run typecheck:web` genera
+los tipos de rutas de Next (`next typegen`) antes de tipar, porque un
+checkout limpio (como el de CI) no tiene un `.next/` con esos tipos
+generado todavía a diferencia de una máquina de desarrollo donde casi
+siempre queda uno de una corrida anterior.
 
 ## Flujo de ramas
 

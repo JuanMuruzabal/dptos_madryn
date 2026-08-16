@@ -13,9 +13,13 @@
     "lint:web": "pnpm --filter @turismo-marcuzzi/web lint",
     "typecheck:web": "pnpm --filter @turismo-marcuzzi/web typecheck",
     "typecheck:shared-types": "pnpm --filter @turismo-marcuzzi/shared-types typecheck",
+    "test:web": "pnpm --filter @turismo-marcuzzi/web test",
+    "test:coverage:web": "pnpm --filter @turismo-marcuzzi/web test:coverage",
     "dev:api": "cd apps/api && go run ./cmd/api",
     "migrate:api": "cd apps/api && go run ./cmd/migrate",
     "build:api": "cd apps/api && go build ./...",
-    "vet:api": "cd apps/api && go vet ./..."
+    "vet:api": "cd apps/api && go vet ./...",
+    "test:api": "cd apps/api && go test ./internal/...",
+    "test:coverage:api": "cd apps/api && go test ./internal/... -coverprofile=coverage.out -covermode=atomic && go tool cover -func=coverage.out | tail -1"
   }
 }
