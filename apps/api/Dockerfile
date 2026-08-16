@@ -35,4 +35,12 @@ COPY --from=build /out/migrate /app/migrate
 RUN mkdir -p /app/uploads
 
 EXPOSE 8080
-CMD ["/app/api"]
+# Corre la migración (idempotente, T0.3) ANTES de arrancar el servidor,
+# en el propio arranque del contenedor — no vía un servicio/comando
+# aparte (docker-compose.yml sí usa un servicio `migrate` separado, pero
+# ese patrón depende de "esperar a que otro servicio termine bien" antes
+# de arrancar este, algo que no todo orquestador soporta igual: el
+# `preDeployCommand` de Render, por ejemplo, es una feature exclusiva de
+# planes pagos — TR-042). Si la migración falla, `&&` corta acá: el
+# contenedor nunca llega a servir tráfico contra un esquema roto.
+CMD ["/bin/sh", "-c", "/app/migrate && /app/api"]

@@ -28,7 +28,13 @@ services:
   # Servicio de un solo disparo: aplica el esquema (AutoMigrate + SQL
   # crudo del exclusion constraint, ver apps/api/internal/db/migrate.go)
   # y termina. Es idempotente (T0.3) — se puede correr de nuevo en cada
-  # `docker compose up` sin romper nada.
+  # `docker compose up` sin romper nada. Nota: desde TR-042, el propio
+  # CMD de apps/api/Dockerfile también corre `/app/migrate` en su
+  # arranque (necesario para Render, cuyo plan free no soporta
+  # `preDeployCommand`) — este servicio aparte sigue existiendo porque
+  # documenta el paso de forma explícita en el grafo de dependencias de
+  # Compose; correr la migración dos veces es redundante pero inofensivo
+  # (idempotente).
   migrate:
     build:
       context: ./apps/api
