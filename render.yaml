@@ -35,10 +35,10 @@ services:
     dockerContext: apps/api
     plan: free
     healthCheckPath: /health
-    # Corre el binario de migración (idempotente, T0.3) ANTES de que el
-    # deploy se dé por sano y reciba tráfico — mismo rol que el servicio
-    # `migrate` de docker-compose.yml, pero sin un servicio aparte.
-    preDeployCommand: /app/migrate
+    # La migración (idempotente, T0.3) corre en el arranque del propio
+    # contenedor (CMD de apps/api/Dockerfile: `/app/migrate && /app/api`),
+    # no acá — `preDeployCommand` es una feature exclusiva de planes
+    # pagos de Render, no disponible en el plan `free` de este servicio.
     envVars:
       - key: PORT
         value: "8080" # tiene que matchear EXPOSE 8080 de apps/api/Dockerfile
