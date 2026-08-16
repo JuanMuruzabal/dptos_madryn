@@ -1,6 +1,9 @@
 package clock
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestToday_IsMidnightInArgentina(t *testing.T) {
 	today := Today()
@@ -37,5 +40,36 @@ func TestParseDate_MatchesToday(t *testing.T) {
 	}
 	if parsed.Before(today) {
 		t.Fatalf("ParseDate(hoy) quedó antes de Today() — reintrodujo el bug de time.Parse en UTC")
+	}
+}
+
+// T12.2: cubre el fallback de mustLoadLocation (la rama que solo debería
+// dispararse si time/tzdata no tiene la zona embebida) — se llama directo
+// porque el test está en el mismo package, no expuesto públicamente.
+func TestMustLoadLocation_FallsBackToFixedOffsetOnError(t *testing.T) {
+	loc := mustLoadLocation("Esto/No/Es/Una/Zona/Real")
+	if loc == nil {
+		t.Fatal("mustLoadLocation no debería devolver nil ante un nombre de zona inválido")
+	}
+
+	_, offset := time.Now().In(loc).Zone()
+	if want := -3 * 60 * 60; offset != want {
+		t.Fatalf("el fallback debería quedar en UTC-3 (%d segundos), dio %d", want, offset)
+	}
+}
+
+// La zona real ("America/Argentina/Buenos_Aires") sí tiene que cargar sin
+// pasar por el fallback — si esto alguna vez rompe, es una señal de que
+// time/tzdata dejó de estar embebido correctamente en el binario.
+func TestMustLoadLocation_LoadsRealZoneWithoutFallback(t *testing.T) {
+	loc := mustLoadLocation("America/Argentina/Buenos_Aires")
+	if loc.String() != "America/Argentina/Buenos_Aires" {
+		t.Fatalf("esperaba la zona real cargada, dio %q — ¿cayó al fallback FixedZone?", loc.String())
+	}
+}
+
+func TestParseDate_RechazaFormatoInvalido(t *testing.T) {
+	if _, err := ParseDate("14-08-2026"); err == nil {
+		t.Fatal("ParseDate debería rechazar un formato que no sea YYYY-MM-DD")
 	}
 }

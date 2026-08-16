@@ -33,6 +33,7 @@ apps/api/uploads/
 .env.local
 .env.*.local
 *.env
+apps/api/.env.test
 
 # --- Claude Code: settings.local.json y el lock de tareas programadas
 # son estado local de esta máquina/sesión, no configuración de equipo

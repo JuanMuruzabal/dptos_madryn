@@ -360,6 +360,36 @@ ENTRY TEMPLATE:
 - **Qué se sacrifica:** Nada relevante — son cambios de orden/visibilidad, sin tocar datos ni el contrato del formulario.
 - **Reversibilidad:** Alta — reordenar JSX y un `{condición && ...}`, ningún cambio de modelo de datos ni de backend.
 
+## TR-038: Tests de backend contra Postgres real por transacción, no mocks de DB
+
+- **Fecha:** 2026-08-14
+- **Fase:** plan
+- **Decisión:** La suite de tests de `apps/api` (T12 en `docs/implementation-plan.md`, iniciativa de pipeline de CI) corre contra un Postgres efímero real — el mismo `docker-compose.yml` ya existente en local, un service container `postgres:16` en CI — con un helper (`internal/testdb`) que migra el esquema una vez y envuelve cada test en una transacción que se revierte al final. Usa una base de datos separada de desarrollo (`turismo_marcuzzi_test`, nunca `turismo_marcuzzi`).
+- **Alternativas consideradas:** Mockear la capa de datos con `go-sqlmock` (aislamiento total, sin Postgres) — se descartó porque hay que matchear a mano las queries exactas que GORM genera (Preloads, SQL crudo de `MAX(orden)`, el `clause.OnConflict` de los upserts), algo frágil que se rompe con cualquier cambio de query o de versión de GORM sin que el código real esté roto. Además, el exclusion constraint de reservas (TR-005) y el de vehículos (TR-010) son comportamiento real de Postgres — no hay forma de mockearlos con sentido, así que de cualquier manera iba a hacer falta Postgres real para esa parte; usarlo para toda la suite evita mantener dos estrategias de test en paralelo.
+- **Por qué:** Un mock es una segunda fuente de verdad que hay que sincronizar a mano con el comportamiento real de la base — exactamente el tipo de desincronización silenciosa que las exclusion constraints existen para prevenir a nivel de datos. Postgres real por transacción es el patrón estándar en shops Go+GORM, reproducible sin fricción extra: cualquier developer que ya puede correr `pnpm run migrate:api` (requiere Docker, ya documentado en CLAUDE.md) puede correr la suite completa sin instalar nada nuevo.
+- **Qué se sacrifica:** Los tests son más lentos que mocks puros en memoria (aunque a esta escala, segundos no minutos) y requieren Docker corriendo para correr localmente — no es un requisito nuevo (ya hacía falta para `apps/api` en general), pero si algún día se quisiera correr la suite sin Docker (p. ej. un entorno CI muy restringido) habría que revisar esta decisión.
+- **Reversibilidad:** Media — migrar a mocks más adelante para los casos que no dependan de comportamiento real de Postgres es posible sin reescribir toda la suite, pero los tests de exclusion constraints seguirían necesitando Postgres real de todas formas.
+
+## TR-039: Vitest en vez de Jest para el frontend
+
+- **Fecha:** 2026-08-14
+- **Fase:** plan
+- **Decisión:** La suite de tests de `apps/web` usa Vitest + `@vitest/coverage-v8` + Testing Library, no Jest.
+- **Alternativas consideradas:** Jest con el preset oficial `next/jest`.
+- **Por qué:** Vitest es nativo ESM y encaja mejor con el pipeline de Turbopack que ya usa este proyecto (Next.js 16) que la interop ESM/CommonJS de Jest, que históricamente da más fricción en proyectos así. El coverage con thresholds configurables (`coverage.thresholds` en `vitest.config.ts`) viene integrado sin sumar una herramienta aparte para el quality gate del 80%.
+- **Qué se sacrifica:** Jest tiene más años de uso específico con Next.js (preset oficial mantenido por Vercel) — Vitest requiere armar a mano los mocks de `next/navigation`/`next/headers` que `next/jest` resuelve de fábrica. Se acepta el costo de setup inicial a cambio de velocidad y mejor encaje con el resto del toolchain.
+- **Reversibilidad:** Media — migrar de Vitest a Jest más adelante implica reescribir la configuración y algunos mocks, pero los tests en sí (describe/it/expect) son sintácticamente casi idénticos entre ambos.
+
+## TR-040: Coverage del frontend medido sobre `lib/`/`actions/`/componentes cliente, excluyendo Server Components de página
+
+- **Fecha:** 2026-08-14
+- **Fase:** plan
+- **Decisión:** El umbral de 80% de coverage en `apps/web` se calcula excluyendo explícitamente `app/**/page.tsx` y `app/**/layout.tsx` del denominador — aplica sobre `lib/`, `app/actions/*.ts` y componentes cliente con lógica real.
+- **Alternativas consideradas:** 80% sobre el 100% de `apps/web/src` sin excepciones.
+- **Por qué:** Los Server Components async (la mayoría de los `page.tsx`/`layout.tsx` de este proyecto, todos con Cache Components/PPR — TR-008) no son unit-testeables de forma estándar: Testing Library necesita un DOM real vía jsdom y componentes síncronos/cliente, no funciones async que devuelven JSX del lado del servidor. Forzar el 80% sobre esos archivos empujaría a escribir tests artificiales (renderizar el resultado con trucos frágiles, o testear detalles de implementación) solo para inflar el número, sin detectar bugs reales — esos archivos ya están cubiertos, con más sentido, por el QA end-to-end de T5.4.
+- **Qué se sacrifica:** El número de "80%" no representa el 100% del código de `apps/web` — alguien que lea el reporte de coverage sin este contexto podría sobreestimar cuánto del frontend está realmente probado. Mitigado documentando el alcance explícitamente en `vitest.config.ts` (comentario) y en el README.
+- **Reversibilidad:** Alta — es una configuración de `coverage.exclude` en `vitest.config.ts`; ampliar el alcance más adelante (si aparece una forma razonable de testear Server Components) es un cambio de config, no de arquitectura.
+
 ## TR-008: Cache Components/Partial Prerendering adoptado en T1.2, no diferido a T5.1
 - **Fecha:** 2026-08-11
 - **Fase:** build

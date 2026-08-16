@@ -63,3 +63,86 @@ jobs:
 
       - name: Build
         run: go build ./...
+
+  # Etapa 1 del pipeline ("Run tests and quality gates" — etapa 2 será
+  # análisis estático con SonarCloud, etapa 3 el deploy, ninguna de las
+  # dos implementada todavía). Dos jobs paralelos, uno por stack, cada
+  # uno falla el build si el coverage baja de 80% — el mismo umbral que
+  # se usó localmente para diseñar la suite (docs/implementation-plan.md
+  # §12). R13: este gate se activa recién acá porque T12.13/T12.19 ya
+  # cerraron la suite a ≥80% real de antemano.
+  test-api:
+    name: "Run tests and quality gates (api)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      # Igual que docker-compose.yml de la raíz (mismo usuario/imagen),
+      # pero con una base propia de test (TEST_DATABASE_URL más abajo) —
+      # nunca la de desarrollo (internal/testdb la rechaza si el nombre
+      # no termina en "_test", ver TR-038 en docs/tradeoffs.md).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: turismo
+          POSTGRES_PASSWORD: turismo
+          POSTGRES_DB: turismo_marcuzzi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U turismo -d turismo_marcuzzi_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://turismo:turismo@localhost:5432/turismo_marcuzzi_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+
+      # ./internal/... en vez de ./... — cmd/api y cmd/migrate son binarios
+      # main sin archivos de test, y pedirles -coverprofile igual hace
+      # fallar `go test ./...` con "no such tool covdata" en algunos
+      # toolchains de Go (confirmado localmente) aunque todos los paquetes
+      # con tests reales hayan pasado. Todo el código con tests reales vive
+      # bajo internal/ (ver CLAUDE.md).
+      - name: Test with coverage
+        run: go test ./internal/... -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Check coverage >= 80%
+        run: |
+          go tool cover -func=coverage.out | tail -1
+          total=$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+')
+          echo "Coverage total: ${total}%"
+          awk -v c="$total" 'BEGIN { exit !(c >= 80) }'
+
+  test-web:
+    name: "Run tests and quality gates (web)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # coverage.thresholds en apps/web/vitest.config.mts ya hace fallar
+      # este comando (exit distinto de 0) si algún indicador baja de 80% —
+      # no hace falta un chequeo aparte como en el job de api.
+      - name: Test with coverage
+        run: pnpm --filter @turismo-marcuzzi/web test:coverage
