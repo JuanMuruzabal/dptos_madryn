@@ -198,7 +198,7 @@ Para iterar rápido en un archivo puntual: `pnpm --filter
 ## Integración continua
 
 `.github/workflows/ci.yml` corre en cada push a `main` (y en cualquier
-pull request) con cuatro jobs independientes, en paralelo:
+pull request) con cinco jobs:
 
 - **`api`**: `go vet`, `golangci-lint`, `go build`.
 - **`web`**: `eslint`, `next typegen && tsc --noEmit`, typecheck de
@@ -209,11 +209,17 @@ pull request) con cuatro jobs independientes, en paralelo:
 - **`test-web`** ("Run tests and quality gates (web)"): la suite de
   Vitest con coverage — el propio `coverage.thresholds` de
   `apps/web/vitest.config.mts` hace fallar el comando por debajo de 80%.
+- **`deploy`**: `needs: [web, api, test-api, test-web]` — solo corre en
+  un push directo a `main` (nunca en un pull_request), y solo si los
+  cuatro jobs de arriba pasaron. Dispara el Sync Hook del Blueprint de
+  Render (secret `RENDER_SYNC_HOOK_URL`, ver sección "Deploy" abajo) —
+  así el deploy a producción queda gateado por CI, no por un push
+  cualquiera.
 
-`test-api`/`test-web` son la Etapa 1 de un pipeline pensado en 3 etapas
-(Etapa 2: análisis estático con SonarCloud, salteada por decisión del
-cliente; Etapa 3: deploy, ver sección "Deploy" abajo — ver
-`docs/implementation-plan.md` §12).
+Los primeros cuatro son la Etapa 1 del pipeline ("Run tests and quality
+gates"); `deploy` es la Etapa 3 (Etapa 2, análisis estático con
+SonarCloud, salteada por decisión del cliente) — ver
+`docs/implementation-plan.md` §12.
 
 Antes de abrir un PR, correr localmente el mismo pipeline que corre CI
 (los comandos de arriba, en el mismo orden, incluyendo esta sección de
@@ -264,8 +270,18 @@ sin que nadie lo vea en texto plano).
      `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (del paso 1).
    - `turismo-marcuzzi-web`: `CONTACTO_WHATSAPP`, `CONTACTO_EMAIL` (los
      datos reales del cliente, reemplazan los placeholders de desarrollo).
-4. Deploy. El primer request a `/health` puede tardar (plan free duerme
-   los servicios sin tráfico — cold start) — no es un error.
+4. **Deploy automático gateado por CI** (job `deploy` en `ci.yml`, ver
+   "Integración continua" abajo): en el dashboard de Render, sección
+   **Blueprints** → tu blueprint → copiar el **Sync Hook** (sincroniza
+   `api` y `web` de una sola llamada — no el "Deploy Hook" de un
+   servicio individual, ese solo cubre uno de los dos). Cargarlo como
+   secret del repo en GitHub: **Settings → Secrets and variables →
+   Actions → pestaña "Secrets"** (no "Variables", son dos cosas
+   distintas en la misma página) → nombre exacto `RENDER_SYNC_HOOK_URL`.
+   Sin este secret, CI sigue pasando igual pero el job `deploy` falla —
+   hay que segui deployando a mano desde Render mientras tanto.
+5. Deploy inicial. El primer request a `/health` puede tardar (plan free
+   duerme los servicios sin tráfico — cold start) — no es un error.
 
 Si algún día cambia el nombre de un servicio o se conecta un dominio
 propio, `CORS_ALLOWED_ORIGINS` (en `turismo-marcuzzi-api`) y `API_URL`
