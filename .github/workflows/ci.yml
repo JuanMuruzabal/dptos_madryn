@@ -146,3 +146,21 @@ jobs:
       # no hace falta un chequeo aparte como en el job de api.
       - name: Test with coverage
         run: pnpm --filter @turismo-marcuzzi/web test:coverage
+
+  # Etapa 3 del pipeline (deploy) — dispara el Sync Hook del Blueprint de
+  # Render (TR-042) SOLO si los 4 jobs de arriba pasaron y SOLO en un
+  # push directo a main (nunca en un pull_request, que no debe deployar
+  # nada). `needs` es lo que gatea esto: si cualquiera de los 4 falla,
+  # este job ni arranca. RENDER_SYNC_HOOK_URL vive como secret del repo
+  # (Settings → Secrets and variables → Actions) — nunca en este archivo:
+  # cualquiera con esa URL puede disparar un deploy.
+  deploy:
+    name: Deploy (Render)
+    needs: [web, api, test-api, test-web]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar el Sync Hook de Render
+        run: curl -fsS -X POST "$RENDER_SYNC_HOOK_URL"
+        env:
+          RENDER_SYNC_HOOK_URL: ${{ secrets.RENDER_SYNC_HOOK_URL }}
