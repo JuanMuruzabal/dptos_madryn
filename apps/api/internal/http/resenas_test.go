@@ -154,6 +154,94 @@ func TestModerar_CuerpoInvalidoDaBadRequest(t *testing.T) {
 	}
 }
 
+// --- delete ---
+
+func TestResenaDelete_ElDuenoPuedeBorrarSuResena(t *testing.T) {
+	h, tx := newResenaHandler(t)
+	u := crearUsuarioDePrueba(t, tx)
+	a := crearAlojamientoDePrueba(t, tx, nil)
+	resena := db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 5, Texto: "Mi reseña"}
+	tx.Create(&resena)
+
+	req := reqConClaims(http.MethodDelete, "/x", nil, map[string]string{"id": resena.ID.String()}, claimsDe(u.ID, "cliente"))
+	rec := httptest.NewRecorder()
+	h.delete(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+	var count int64
+	tx.Model(&db.Resena{}).Where("id = ?", resena.ID).Count(&count)
+	if count != 0 {
+		t.Fatal("la reseña debería haberse borrado de verdad, no solo ocultado")
+	}
+}
+
+func TestResenaDelete_OtroUsuarioNoPuedeBorrarla(t *testing.T) {
+	h, tx := newResenaHandler(t)
+	dueno := crearUsuarioDePrueba(t, tx)
+	otro := crearUsuarioDePrueba(t, tx)
+	a := crearAlojamientoDePrueba(t, tx, nil)
+	resena := db.Resena{UsuarioID: dueno.ID, AlojamientoID: &a.ID, Rating: 5, Texto: "No es tuya"}
+	tx.Create(&resena)
+
+	req := reqConClaims(http.MethodDelete, "/x", nil, map[string]string{"id": resena.ID.String()}, claimsDe(otro.ID, "cliente"))
+	rec := httptest.NewRecorder()
+	h.delete(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, esperaba %d (ni pista de que la reseña existe, es de otro usuario)", rec.Code, http.StatusNotFound)
+	}
+	var count int64
+	tx.Model(&db.Resena{}).Where("id = ?", resena.ID).Count(&count)
+	if count != 1 {
+		t.Fatal("la reseña de otro usuario no debería haberse borrado")
+	}
+}
+
+func TestResenaDelete_InexistenteDaNotFound(t *testing.T) {
+	h, tx := newResenaHandler(t)
+	u := crearUsuarioDePrueba(t, tx)
+	id := uuid.New().String()
+
+	req := reqConClaims(http.MethodDelete, "/x", nil, map[string]string{"id": id}, claimsDe(u.ID, "cliente"))
+	rec := httptest.NewRecorder()
+	h.delete(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, esperaba %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestResenaDelete_SinClaimsDaUnauthorized(t *testing.T) {
+	h, tx := newResenaHandler(t)
+	u := crearUsuarioDePrueba(t, tx)
+	a := crearAlojamientoDePrueba(t, tx, nil)
+	resena := db.Resena{UsuarioID: u.ID, AlojamientoID: &a.ID, Rating: 5, Texto: "Texto"}
+	tx.Create(&resena)
+
+	req := reqConClaims(http.MethodDelete, "/x", nil, map[string]string{"id": resena.ID.String()}, nil)
+	rec := httptest.NewRecorder()
+	h.delete(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, esperaba %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestResenaDelete_IdInvalidoDaBadRequest(t *testing.T) {
+	h, tx := newResenaHandler(t)
+	u := crearUsuarioDePrueba(t, tx)
+
+	req := reqConClaims(http.MethodDelete, "/x", nil, map[string]string{"id": "no-es-un-uuid"}, claimsDe(u.ID, "cliente"))
+	rec := httptest.NewRecorder()
+	h.delete(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, esperaba %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 // --- create ---
 
 func TestResenaCreate_ConReservaConfirmada(t *testing.T) {

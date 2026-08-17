@@ -148,10 +148,15 @@ export default async function PerfilPage() {
         </section>
         )}
 
+        {/* Rojo (2026-08-17, pedido del cliente) — mismo tono que el
+            "Cerrar sesión" del menú de cuenta (ver account-menu.tsx,
+            dropdownLogoutClass/inlineLogoutClass), acá con borde en vez de
+            texto plano porque este botón vive suelto en la página, no
+            dentro de una lista de opciones. */}
         <form action={logoutAction} className="mt-12">
           <button
             type="submit"
-            className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold transition-colors hover:bg-ink hover:text-sand"
+            className="rounded-full border border-coral-dark/40 px-6 py-2.5 text-sm font-semibold text-coral-dark transition-colors hover:bg-coral-dark hover:text-sand"
           >
             Cerrar sesión
           </button>

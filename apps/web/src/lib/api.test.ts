@@ -9,6 +9,7 @@ import {
   apiUrl,
   borrarFoto,
   borrarImagenSitio,
+  borrarResena,
   crearAlojamiento,
   crearBloqueo,
   crearReserva,
@@ -454,5 +455,14 @@ describe("wrappers admin restantes", () => {
     await crearResena("token", "a-1", 5, "Excelente");
     const [, init] = ultimaLlamada();
     expect(JSON.parse(init?.body as string)).toEqual({ rating: 5, texto: "Excelente" });
+  });
+
+  it("borrarResena manda DELETE a /resenas/{id}", async () => {
+    mockFetchNoContent();
+    const resultado = await borrarResena("token", "r-1");
+    expect(resultado).toEqual({ ok: true, data: undefined });
+    const [url, init] = ultimaLlamada();
+    expect(url).toContain("/resenas/r-1");
+    expect(init?.method).toBe("DELETE");
   });
 });

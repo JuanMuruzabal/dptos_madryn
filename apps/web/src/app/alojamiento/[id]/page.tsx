@@ -144,7 +144,7 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
 
             <section>
               <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Reseñas</h2>
-              <ResenasList resenas={resenas} />
+              <ResenasList resenas={resenas} alojamientoId={id} miUsuarioId={usuario?.id} />
               {puedeResenar && <ResenaForm alojamientoId={id} />}
             </section>
           </div>
