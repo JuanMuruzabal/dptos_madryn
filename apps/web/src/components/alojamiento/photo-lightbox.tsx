@@ -68,11 +68,18 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
           onClose();
         }}
         aria-label="Cerrar"
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20"
       >
         <X size={22} aria-hidden />
       </button>
 
+      {/* z-10 (bug real, reportado en mobile): sin esto, el <div
+          role="dialog"> de abajo —más adelante en el DOM, position:
+          relative con z-index:auto también— terminaba pintándose por
+          encima de estos botones. En desktop no se notaba porque el
+          diálogo queda angosto y centrado (max-w-5xl), lejos de los
+          bordes; en mobile w-full lo estira casi al ancho completo de la
+          pantalla, exactamente donde están las flechas, y las tapaba. */}
       {fotos.length > 1 && (
         <>
           <button
@@ -82,7 +89,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
               setIndex((i) => (i - 1 + fotos.length) % fotos.length);
             }}
             aria-label="Foto anterior"
-            className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:left-6"
+            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:left-6"
           >
             <ChevronLeft size={26} aria-hidden />
           </button>
@@ -93,7 +100,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
               setIndex((i) => (i + 1) % fotos.length);
             }}
             aria-label="Foto siguiente"
-            className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:right-6"
+            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:right-6"
           >
             <ChevronRight size={26} aria-hidden />
           </button>
@@ -128,7 +135,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
       </div>
 
       {fotos.length > 1 && (
-        <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-sand/70">
+        <p className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-sm text-sand/70">
           {index + 1} / {fotos.length}
         </p>
       )}

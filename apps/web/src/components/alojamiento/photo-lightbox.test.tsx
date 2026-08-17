@@ -71,6 +71,14 @@ describe("PhotoLightbox", () => {
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });
 
+  it("las flechas y el contador quedan por encima de la foto (bug real: se tapaban en mobile)", () => {
+    const fotos = [foto({ id: "f-1" }), foto({ id: "f-2" })];
+    render(<PhotoLightbox fotos={fotos} nombre="Depto Test" initialIndex={0} onClose={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Foto anterior" }).className).toContain("z-10");
+    expect(screen.getByRole("button", { name: "Foto siguiente" }).className).toContain("z-10");
+    expect(screen.getByText("1 / 2").className).toContain("z-10");
+  });
+
   it("clickear una flecha no cierra el lightbox (stopPropagation)", () => {
     const onClose = vi.fn();
     const fotos = [foto({ id: "f-1" }), foto({ id: "f-2" })];
