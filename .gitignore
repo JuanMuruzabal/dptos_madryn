@@ -44,6 +44,14 @@ docs/*credential*
 docs/*secret*
 docs/*.local.md
 
+# --- Capturas de pantalla sueltas para debugging (p. ej. las que se pasan
+# para diagnosticar un bug visual) — no son documentación del proyecto,
+# no deberían terminar en el historial del repo. ---
+docs/*.webp
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+
 # --- Claude Code: settings.local.json y el lock de tareas programadas
 # son estado local de esta máquina/sesión, no configuración de equipo
 # (a diferencia de un futuro .claude/settings.json compartido, que si
