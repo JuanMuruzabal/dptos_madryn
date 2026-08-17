@@ -40,7 +40,7 @@ export default async function PerfilPage() {
   const reservas = todasLasReservas.filter((r) => r.estado !== "cancelada");
 
   return (
-    <main className="flex-1 bg-sand px-6 pt-32 pb-24 md:px-10">
+    <main className="flex-1 bg-sand px-6 pt-[var(--header-height)] pb-24 md:px-10">
       <div className="mx-auto max-w-(--container-max)">
         <p className="tracked-caps mb-3 text-xs font-semibold text-ink-soft">
           Mi cuenta

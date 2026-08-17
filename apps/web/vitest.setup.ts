@@ -26,6 +26,18 @@ class IntersectionObserverStub {
 }
 vi.stubGlobal("IntersectionObserver", IntersectionObserverStub);
 
+// jsdom tampoco implementa ResizeObserver — site-header.tsx lo usa (T4.x,
+// bug real de mobile 2026-08-17: mide la altura real del header fijo para
+// que las páginas no queden tapadas cuando el banner de aviso envuelve a
+// más de una línea). Sin esto, cualquier test que monte <SiteHeader>
+// revienta con "ResizeObserver is not defined" apenas monta.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+
 if (!window.matchMedia) {
   window.matchMedia = (query: string) => ({
     matches: false,

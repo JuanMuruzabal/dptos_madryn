@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const NAV_LINKS = [
   { href: "/alojamiento", label: "Alojamiento" },
@@ -57,6 +57,7 @@ export function SiteHeader({
   const hasHero = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!hasHero) return;
@@ -66,12 +67,35 @@ export function SiteHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, [hasHero]);
 
+  // Bug real (2026-08-17, reportado en mobile): cada página compensa este
+  // header `fixed` reservando un padding-top FIJO (--header-height, ver
+  // globals.css) — pero el header no siempre mide lo mismo: bannerSlot
+  // (reserva pendiente/confirmada/esperando confirmación) tiene texto
+  // largo que envuelve a más líneas en una pantalla angosta, así que el
+  // header real termina más alto que el valor fijo asumido y el contenido
+  // de la página arranca tapado detrás. ResizeObserver mide la altura
+  // REAL del header (se recalcula solo cuando el banner aparece/desaparece
+  // o el texto envuelve distinto) y la publica como variable CSS — ninguna
+  // página tiene que adivinar un número.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const setHeightVar = () => {
+      document.documentElement.style.setProperty("--header-height", `${el.offsetHeight}px`);
+    };
+    setHeightVar();
+    const observer = new ResizeObserver(setHeightVar);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // El menú mobile abierto siempre se ve sobre fondo sólido, así que
   // forzamos esa variante de color mientras está abierto.
   const solid = !hasHero || scrolled || menuOpen;
 
   return (
     <header
+      ref={headerRef}
       className={`fixed inset-x-0 top-0 z-50 text-sand transition-colors duration-300 ${
         solid ? "bg-ink shadow-[0_1px_0_rgba(0,0,0,0.15)] backdrop-blur-sm" : "bg-transparent"
       }`}

@@ -33,6 +33,13 @@
 
   /* --- Layout --- */
   --container-max: 84rem; /* ancho máximo de contenido en desktop */
+  /* Altura real del header fijo (site-header.tsx la mide con
+   * ResizeObserver y la actualiza acá) — 8rem es el valor por defecto
+   * antes de hidratar/sin JS, igual al pt-32 fijo que usaban las páginas
+   * antes de este fix (bug real de mobile, 2026-08-17): un valor fijo no
+   * alcanza cuando bannerSlot envuelve a más líneas en pantallas angostas,
+   * tapando el contenido de la página. */
+  --header-height: 8rem;
 }
 
 @theme inline {

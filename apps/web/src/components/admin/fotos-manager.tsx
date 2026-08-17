@@ -116,7 +116,12 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
         </div>
       )}
 
-      <ul className="grid grid-cols-5 gap-2.5">
+      {/* grid-cols-3 en mobile, no grid-cols-5 fijo (bug real 2026-08-17):
+          con 10 casilleros en 5 columnas fijas, cada uno quedaba en ~55px
+          de ancho en un teléfono común — el botón de borrar (24px,
+          esquina superior derecha) ocupaba casi la mitad del casillero,
+          tapando la miniatura. */}
+      <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
         {Array.from({ length: TOTAL_ESPACIOS }, (_, i) => {
           const foto = orden[i];
 
