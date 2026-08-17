@@ -4,7 +4,7 @@
 // prerenderizarse como "shell" (ver next.config.ts cacheComponents).
 export default function PerfilLoading() {
   return (
-    <main className="flex-1 bg-sand px-6 pt-[var(--header-height)] pb-24 md:px-10">
+    <main className="bg-tapiz flex-1 px-6 pt-[var(--header-height)] pb-24 md:px-10">
       <div className="mx-auto max-w-(--container-max) animate-pulse">
         <div className="h-3 w-24 rounded bg-ink/10" />
         <div className="mt-4 h-10 w-64 rounded bg-ink/10" />

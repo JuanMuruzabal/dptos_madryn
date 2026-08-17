@@ -31,7 +31,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (session.rol !== "administrador") redirect("/");
 
   return (
-    <main className="flex-1 bg-sand px-6 pt-[var(--header-height)] pb-24 md:px-10">
+    <main className="bg-tapiz flex-1 px-6 pt-[var(--header-height)] pb-24 md:px-10">
       <div className="mx-auto max-w-(--container-max)">
         <p className="tracked-caps mb-3 text-xs font-semibold text-ink-soft">
           Panel de administración

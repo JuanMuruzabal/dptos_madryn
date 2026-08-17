@@ -178,6 +178,20 @@
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+
+  /* Textura tipo tapizado con ondas suaves (2026-08-17, pedido del
+   * cliente) — SOLO en /perfil y /admin/**, no en el fondo global ni en
+   * el resto del sitio. Se aplica en el <main> de cada una de esas 2
+   * páginas, reemplazando bg-sand puntualmente ahí — el patrón (SVG
+   * seamless, se repite solo, no hace falta background-repeat) queda
+   * detrás del contenido por el orden natural de pintado de CSS (es
+   * background del contenedor, no una capa superpuesta), así que las
+   * tarjetas bg-white de encima ya tapan la textura sin necesitar
+   * z-index ni nada especial. */
+  .bg-tapiz {
+    background-color: #f2ede3;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='18'%3E%3Cpath d='M0 9 Q15 0 30 9 T60 9' fill='none' stroke='%2316323a' stroke-opacity='0.07' stroke-width='1.2'/%3E%3C/svg%3E");
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
