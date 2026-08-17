@@ -100,7 +100,7 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
   );
 
   return (
-    <main className="flex-1 bg-sand pt-32 pb-24">
+    <main className="flex-1 bg-sand pt-[var(--header-height)] pb-24">
       <div className="mx-auto max-w-(--container-max) px-6 md:px-10">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">

@@ -15,7 +15,7 @@ interface ComingSoonProps {
  * footer ya los pone el layout raíz. */
 export function ComingSoon({ title, description, gradient }: ComingSoonProps) {
   return (
-    <main className="flex-1 bg-sand pt-32 pb-24">
+    <main className="flex-1 bg-sand pt-[var(--header-height)] pb-24">
       <div className="mx-auto max-w-(--container-max) px-6 md:px-10">
         <div
           role="img"

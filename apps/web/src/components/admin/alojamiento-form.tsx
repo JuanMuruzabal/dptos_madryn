@@ -55,7 +55,12 @@ export function AlojamientoForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* grid-cols-1 en mobile (bug real 2026-08-17): esta página se
+          renderiza directo sobre el ancho real del viewport (a diferencia
+          de reserva-edit-form.tsx, protegido por el min-width de la tabla
+          que lo contiene) — 2 columnas fijas quedaban apretadas en un
+          teléfono común. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="precioNoche" className={labelClass}>Precio por noche (ARS)</label>
           <input

@@ -456,7 +456,11 @@ export function AvailabilityCalendar({
                     : "Elegí check-in y check-out arriba"}
                 </p>
 
-                <div className="grid grid-cols-2 gap-3">
+                {/* grid-cols-1 en mobile (bug real 2026-08-17): el modal
+                    (max-w-lg) en un teléfono común deja ~140px por columna
+                    con 2 columnas fijas — apretado para un input de texto
+                    con su label. */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="contactoNombre" className={authLabelClass}>
                       Nombre
