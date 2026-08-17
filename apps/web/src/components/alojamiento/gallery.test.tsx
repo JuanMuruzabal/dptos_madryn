@@ -15,7 +15,10 @@ describe("Gallery", () => {
 
   it("con una sola foto, no muestra la tira de miniaturas", () => {
     render(<Gallery fotos={[foto()]} nombre="Depto Test" placeholderSeed="a-1" />);
-    expect(screen.queryByRole("button", { name: /^Ver/ })).not.toBeInTheDocument();
+    // Las miniaturas tienen el patrón "Ver foto/video N de M" — el botón
+    // de pantalla completa (2026-08-17) también arranca con "Ver" pero no
+    // termina en "de M", por eso el regex es más específico acá.
+    expect(screen.queryByRole("button", { name: /^Ver (foto|video) \d+ de \d+$/ })).not.toBeInTheDocument();
   });
 
   it("una foto activa de tipo video renderiza un <video>", () => {
@@ -42,5 +45,41 @@ describe("Gallery", () => {
     const fotos = [foto({ id: "f-1" }), foto({ id: "f-2", tipo: "video", orden: 1 })];
     render(<Gallery fotos={fotos} nombre="Depto Test" placeholderSeed="a-1" />);
     expect(screen.getByRole("button", { name: "Ver video 2 de 2" })).toBeInTheDocument();
+  });
+
+  describe("pantalla completa (2026-08-17, pedido del cliente)", () => {
+    it("clickear el ícono de expandir abre el lightbox en la foto activa", () => {
+      const fotos = [foto({ id: "f-1", url: "http://x/1.jpg" }), foto({ id: "f-2", url: "http://x/2.jpg", orden: 1 })];
+      render(<Gallery fotos={fotos} nombre="Depto Test" placeholderSeed="a-1" />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver foto 2 de 2" }));
+      fireEvent.click(screen.getByRole("button", { name: "Ver foto en pantalla completa" }));
+
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-label", expect.stringContaining("foto 2 de 2"));
+    });
+
+    it("con una foto (tipo foto), toda el área de la imagen también abre el lightbox", () => {
+      render(<Gallery fotos={[foto()]} nombre="Depto Test" placeholderSeed="a-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver foto en pantalla completa" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("con un video, solo el ícono abre el lightbox (no hay botón de área completa)", () => {
+      render(<Gallery fotos={[foto({ tipo: "video" })]} nombre="Depto Test" placeholderSeed="a-1" />);
+      // El botón de "toda el área" (sin nombre propio, solapado al video)
+      // no existe para video — solo el ícono explícito.
+      expect(screen.getByRole("button", { name: "Ver video en pantalla completa" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Ver video en pantalla completa" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("cerrar el lightbox lo saca del documento", () => {
+      render(<Gallery fotos={[foto()]} nombre="Depto Test" placeholderSeed="a-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver foto en pantalla completa" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

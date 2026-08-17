@@ -110,7 +110,20 @@ describe("FotosManager", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
-  it("arrastrar una foto sobre otra reordena y persiste el nuevo orden", async () => {
+  it("el botón de borrar arranca visible (touch) y solo se oculta con mouse (pointer-fine)", () => {
+    render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
+    const borrar = screen.getByRole("button", { name: "Borrar foto" });
+    expect(borrar.className).toContain("opacity-100");
+    expect(borrar.className).toContain("pointer-fine:opacity-0");
+  });
+
+  it("la agarradera de arrastre existe, con touch-none para no pelear con el scroll nativo", () => {
+    render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
+    const agarradera = screen.getByRole("button", { name: "Mantené presionado y arrastrá para reordenar" });
+    expect(agarradera.className).toContain("touch-none");
+  });
+
+  it("arrastrar una foto sobre otra (Pointer Events, agarradera) reordena y persiste el nuevo orden", async () => {
     const fotos = [
       foto({ id: "f-1", orden: 0 }),
       foto({ id: "f-2", orden: 1 }),
@@ -118,11 +131,21 @@ describe("FotosManager", () => {
     ];
     render(<FotosManager alojamientoId="a-1" fotos={fotos} />);
 
-    const items = screen.getAllByRole("button", { name: /^Ver foto/ }).map((btn) => btn.closest("li") as HTMLElement);
-    // Arrastra el primero (f-1) y lo suelta sobre el tercero (f-3).
-    fireEvent.dragStart(items[0]);
-    fireEvent.dragOver(items[2]);
-    fireEvent.drop(items[2]);
+    const items = screen
+      .getAllByRole("button", { name: /^Ver foto/ })
+      .map((btn) => btn.closest("li") as HTMLElement);
+    const agarraderas = screen.getAllByRole("button", {
+      name: "Mantené presionado y arrastrá para reordenar",
+    });
+
+    // jsdom no hace layout real: document.elementFromPoint siempre da
+    // null. Se mockea para simular que el dedo/cursor está sobre el
+    // tercer casillero (f-3) en el momento del pointermove.
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(items[2]);
+
+    fireEvent.pointerDown(agarraderas[0], { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(agarraderas[0], { pointerId: 1, clientX: 200, clientY: 0 });
+    fireEvent.pointerUp(agarraderas[0], { pointerId: 1 });
 
     await waitFor(() =>
       expect(reordenarFotosAction).toHaveBeenCalledWith("a-1", ["f-2", "f-3", "f-1"]),
@@ -134,9 +157,18 @@ describe("FotosManager", () => {
     const fotos = [foto({ id: "f-1", orden: 0 }), foto({ id: "f-2", orden: 1 })];
     render(<FotosManager alojamientoId="a-1" fotos={fotos} />);
 
-    const items = screen.getAllByRole("button", { name: /^Ver foto/ }).map((btn) => btn.closest("li") as HTMLElement);
-    fireEvent.dragStart(items[0]);
-    fireEvent.drop(items[0]);
+    const items = screen
+      .getAllByRole("button", { name: /^Ver foto/ })
+      .map((btn) => btn.closest("li") as HTMLElement);
+    const agarraderas = screen.getAllByRole("button", {
+      name: "Mantené presionado y arrastrá para reordenar",
+    });
+
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(items[0]);
+
+    fireEvent.pointerDown(agarraderas[0], { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(agarraderas[0], { pointerId: 1, clientX: 5, clientY: 0 });
+    fireEvent.pointerUp(agarraderas[0], { pointerId: 1 });
 
     expect(reordenarFotosAction).not.toHaveBeenCalled();
   });

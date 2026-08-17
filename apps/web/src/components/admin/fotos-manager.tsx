@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { GripVertical, X } from "lucide-react";
 import type { Foto } from "@turismo-marcuzzi/shared-types";
 import { borrarFotoAction, reordenarFotosAction, subirFotoAction, type AdminFormState } from "@/app/actions/admin";
 
@@ -55,6 +56,14 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
 
   const [seleccionada, setSeleccionada] = useState(0);
   const [arrastrando, setArrastrando] = useState<number | null>(null);
+  // Sobre qué casillero está el dedo/cursor mientras se arrastra — solo
+  // para el resalte visual del destino, `soltarEn` reordena leyendo esto.
+  const [sobreIndice, setSobreIndice] = useState<number | null>(null);
+  // Qué pointerId está arrastrando ahora — con setPointerCapture, el
+  // pointermove/pointerup del gesto siguen llegando al mismo <button> del
+  // handle pase lo que pase por debajo del dedo, pero igual conviene
+  // filtrar por id (más de un dedo a la vez es un caso raro pero posible).
+  const arrastreRef = useRef<number | null>(null);
 
   // Limpia el input de archivo después de una subida exitosa, para poder
   // encadenar otra sin tener que reabrir el selector a mano.
@@ -86,6 +95,39 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
       );
       router.refresh();
     });
+  }
+
+  // Reordenar con Pointer Events en vez del HTML5 Drag and Drop nativo
+  // (bug real 2026-08-17, reportado en mobile: "no funciona la funcion de
+  // arrastrar la imagen para cambiar el orden... arrastrarla con el dedo
+  // en vez del cursor") — la API nativa de drag-and-drop (draggable,
+  // onDragStart/onDragOver/onDrop) es de escritorio pura, los navegadores
+  // mobile no la disparan con gestos táctiles. Pointer Events sí unifica
+  // mouse/touch/lápiz en un solo set de eventos, así que un handle chico
+  // dedicado (agarradera ⠿, con touch-none para que el navegador no le
+  // gane la mano al gesto con su propio scroll nativo) reemplaza al
+  // casillero entero siendo arrastrable: funciona igual con mouse y con
+  // el dedo, sin dos caminos de código distintos.
+  function iniciarArrastre(e: React.PointerEvent<HTMLButtonElement>, i: number) {
+    e.preventDefault();
+    arrastreRef.current = e.pointerId;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setArrastrando(i);
+  }
+
+  function moverArrastre(e: React.PointerEvent<HTMLButtonElement>) {
+    if (arrastreRef.current !== e.pointerId) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const casillero = el?.closest<HTMLElement>("[data-foto-index]");
+    setSobreIndice(casillero ? Number(casillero.dataset.fotoIndex) : null);
+  }
+
+  function soltarArrastre(e: React.PointerEvent<HTMLButtonElement>) {
+    if (arrastreRef.current !== e.pointerId) return;
+    arrastreRef.current = null;
+    if (sobreIndice !== null) soltarEn(sobreIndice);
+    else setArrastrando(null);
+    setSobreIndice(null);
   }
 
   const activa = orden[seleccionada] ?? orden[0];
@@ -143,13 +185,9 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
           return (
             <li
               key={foto.id}
-              draggable
-              onDragStart={() => setArrastrando(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => soltarEn(i)}
-              onDragEnd={() => setArrastrando(null)}
-              className={`group relative aspect-square cursor-grab overflow-hidden rounded-md bg-sand-dim ring-2 transition-opacity active:cursor-grabbing ${
-                i === seleccionada ? "ring-coral" : "ring-transparent"
+              data-foto-index={i}
+              className={`group relative aspect-square overflow-hidden rounded-md bg-sand-dim ring-2 transition-opacity ${
+                i === seleccionada ? "ring-coral" : sobreIndice === i && arrastrando !== null && arrastrando !== i ? "ring-tide" : "ring-transparent"
               } ${arrastrando === i ? "opacity-30" : ""}`}
             >
               <button
@@ -166,14 +204,42 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
                   <Image src={foto.url} alt="" fill sizes="120px" className="pointer-events-none object-cover" />
                 )}
               </button>
+
+              {/* Borrar: opacity-100 por defecto (bug real 2026-08-17,
+                  "no se observa bien el icono a presionar para quitar la
+                  foto") — group-hover:opacity-100 solo funcionaba con
+                  mouse, un dispositivo táctil no tiene estado :hover
+                  persistente, así que el ícono quedaba invisible salvo un
+                  toque previo ambiguo. pointer-fine (mouse/trackpad) es el
+                  único caso que ahora arranca en 0 y aparece al hover;
+                  touch (pointer-coarse, el default sin ese prefijo) lo
+                  deja siempre visible. */}
               <button
                 type="button"
                 disabled={mutando}
                 onClick={() => borrar(foto.id)}
                 aria-label="Borrar foto"
-                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-ink/70 text-xs text-sand opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-ink/80 text-sand opacity-100 transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100"
               >
-                ×
+                <X size={14} strokeWidth={2.25} aria-hidden />
+              </button>
+
+              {/* Agarradera de arrastre — reemplaza al casillero entero
+                  siendo draggable (ver iniciarArrastre arriba). touch-none
+                  evita que el navegador arranque su propio scroll con el
+                  primer movimiento del dedo acá, que es lo que rompía el
+                  reordenado táctil. Misma visibilidad condicional que
+                  borrar: siempre visible en touch, hover-only con mouse. */}
+              <button
+                type="button"
+                onPointerDown={(e) => iniciarArrastre(e, i)}
+                onPointerMove={moverArrastre}
+                onPointerUp={soltarArrastre}
+                onPointerCancel={soltarArrastre}
+                aria-label="Mantené presionado y arrastrá para reordenar"
+                className="absolute left-1 top-1 z-10 flex h-7 w-7 touch-none items-center justify-center rounded-full bg-ink/80 text-sand opacity-100 transition-opacity pointer-fine:cursor-grab pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:active:cursor-grabbing"
+              >
+                <GripVertical size={14} strokeWidth={2.25} aria-hidden />
               </button>
             </li>
           );

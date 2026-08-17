@@ -38,6 +38,28 @@ class ResizeObserverStub {
 }
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
+// jsdom tampoco implementa setPointerCapture/releasePointerCapture —
+// fotos-manager.tsx los usa para el reordenado táctil (Pointer Events,
+// bug real 2026-08-17: el drag-and-drop nativo de HTML5 no dispara con
+// gestos táctiles en mobile). Sin esto, cualquier test que dispare un
+// pointerdown sobre la agarradera revienta con "setPointerCapture is not
+// a function".
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {};
+}
+
+// jsdom tampoco define document.elementFromPoint (no hace layout real) —
+// fotos-manager.tsx lo usa para saber sobre qué casillero está el dedo
+// durante un arrastre táctil. Sin este stub base, ni siquiera se puede
+// hacer vi.spyOn(document, "elementFromPoint") en un test puntual (spyOn
+// necesita que la propiedad ya exista para poder reemplazarla).
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null;
+}
+
 if (!window.matchMedia) {
   window.matchMedia = (query: string) => ({
     matches: false,
