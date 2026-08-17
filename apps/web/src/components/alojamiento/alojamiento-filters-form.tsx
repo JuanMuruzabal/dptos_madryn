@@ -24,7 +24,13 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
       method="get"
       className="grid grid-cols-1 gap-4 rounded-md border border-ink/10 bg-white/60 p-5 sm:grid-cols-4 sm:items-end"
     >
-      <div>
+      {/* min-w-0 en los 3 campos (bug real 2026-08-17, "el input sobresale
+          de la caja"): sin esto, un item de grid no se achica por debajo
+          del ancho intrínseco de su contenido — un <input type="date">
+          nativo tiene uno bastante grande en algunos navegadores mobile,
+          así que se salía de su celda aunque el input en sí tuviera
+          w-full. */}
+      <div className="min-w-0">
         <label htmlFor="fecha_inicio" className={authLabelClass}>
           Check-in
         </label>
@@ -36,7 +42,7 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
           className={authInputClass}
         />
       </div>
-      <div>
+      <div className="min-w-0">
         <label htmlFor="fecha_fin" className={authLabelClass}>
           Check-out
         </label>
@@ -48,7 +54,7 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
           className={authInputClass}
         />
       </div>
-      <div>
+      <div className="min-w-0">
         <label htmlFor="huespedes" className={authLabelClass}>
           Huéspedes
         </label>

@@ -58,9 +58,26 @@ export function NotificationsBellClient({
         onClick={() => setAbierto((a) => !a)}
         aria-label={`Notificaciones (${visibles.length})`}
         aria-expanded={abierto}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-lg transition-colors hover:bg-sand/10"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-sand/10"
       >
-        <span aria-hidden>🔔</span>
+        {/* SVG en vez del emoji 🔔 (pedido del cliente, 2026-08-17: "parece
+            un emoji") — mismo lenguaje visual que el ícono de cuenta
+            (account-menu.tsx) y los de admin-nav.tsx: trazo simple,
+            currentColor, sin relleno. */}
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M6 8.5a6 6 0 0 1 12 0c0 4.5 1.5 5.8 1.5 5.8H4.5S6 13 6 8.5Z" />
+          <path d="M10 19a2 2 0 0 0 4 0" />
+        </svg>
         {visibles.length > 0 && (
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-coral" aria-hidden />
         )}

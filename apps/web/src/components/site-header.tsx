@@ -67,6 +67,31 @@ export function SiteHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, [hasHero]);
 
+  // Patrón "adjusting state when a prop changes" que React mismo documenta
+  // (https://react.dev/learn/you-might-not-need-an-effect) — reemplaza a un
+  // useEffect que hacía setMenuOpen(false) al cambiar de ruta (bug real
+  // 2026-08-17: el link "Ingresar", parte de accountSlot armado en
+  // account-status.tsx — SiteHeader no controla ese JSX para agregarle un
+  // onClick puntual, no cerraba el menú mobile antes de redirigir). Un
+  // setState síncrono en un efecto viola react-hooks/set-state-in-effect
+  // (mismo motivo ya documentado en modal.tsx); guardar la ruta en un ref y
+  // leerlo durante el render viola react-hooks/refs. Comparar contra un
+  // estado propio y llamar setState DIRECTO en el cuerpo del render (no en
+  // un efecto) es el patrón que React sí avala para esto.
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (pathname !== menuPathname) {
+    setMenuPathname(pathname);
+    setMenuOpen(false);
+  }
+
+  function toggleMenu() {
+    setMenuOpen((open) => !open);
+  }
+
+  function closeMenu() {
+    setMenuOpen(false);
+  }
+
   // Bug real (2026-08-17, reportado en mobile): cada página compensa este
   // header `fixed` reservando un padding-top FIJO (--header-height, ver
   // globals.css) — pero el header no siempre mide lo mismo: bannerSlot
@@ -81,7 +106,11 @@ export function SiteHeader({
     const el = headerRef.current;
     if (!el) return;
     const setHeightVar = () => {
-      document.documentElement.style.setProperty("--header-height", `${el.offsetHeight}px`);
+      // +20px de margen visual (bug real 2026-08-17): medir la altura EXACTA
+      // dejaba el contenido de cada página empezando justo pegado al borde
+      // del header, sin aire — antes el pt-32 fijo, más generoso que el
+      // header real sin banners, disimulaba esto por accidente.
+      document.documentElement.style.setProperty("--header-height", `${el.offsetHeight + 20}px`);
     };
     setHeightVar();
     const observer = new ResizeObserver(setHeightVar);
@@ -104,7 +133,7 @@ export function SiteHeader({
         <Link
           href="/"
           className="font-display text-lg"
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         >
           ALOJAMIENTOS MADRYN
         </Link>
@@ -130,7 +159,7 @@ export function SiteHeader({
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={toggleMenu}
             className="flex h-11 w-11 flex-col items-center justify-center gap-1.5 md:hidden"
           >
             <span
@@ -152,19 +181,31 @@ export function SiteHeader({
       {menuOpen && (
         <nav
           id="mobile-nav"
-          className="tracked-caps flex flex-col items-start gap-1 border-t border-sand/15 px-6 py-8 text-sm font-semibold text-sand md:hidden"
+          className="tracked-caps flex flex-col items-start gap-2.5 border-t border-sand/15 px-6 py-8 text-sm font-semibold text-sand md:hidden"
         >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              onClick={() => setMenuOpen(false)}
+              onClick={closeMenu}
               className="block w-full py-2.5"
             >
               {link.label}
             </Link>
           ))}
-          <div className="pt-2">{accountSlot}</div>
+          {/* flex justify-end (bug real 2026-08-17): sin esto, accountSlot
+              heredaba items-start (alineado a la izquierda, como los nav
+              links de arriba) — el dropdown de AccountMenu se posiciona con
+              `right-0` relativo a SU PROPIO botón (pensado para el header
+              de escritorio, donde ese botón está cerca del borde derecho),
+              así que con el botón a la izquierda el menú se abría fuera de
+              la pantalla por la izquierda. Alineando el botón a la derecha
+              acá también, el mismo `right-0` vuelve a comportarse bien sin
+              tocar AccountMenu — y de paso lo separa visualmente de la
+              navegación en vez de quedar pegado. */}
+          <div className="mt-3 flex w-full justify-end border-t border-sand/15 pt-4">
+            {accountSlot}
+          </div>
         </nav>
       )}
     </header>
