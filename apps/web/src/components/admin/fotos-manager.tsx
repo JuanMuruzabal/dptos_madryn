@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { GripVertical, X } from "lucide-react";
 import type { Foto } from "@turismo-marcuzzi/shared-types";
 import { borrarFotoAction, reordenarFotosAction, subirFotoAction, type AdminFormState } from "@/app/actions/admin";
+import { Modal } from "@/components/modal";
+import { dangerButtonClass, secondaryButtonClass } from "@/components/admin/ui";
 
 const initialState: AdminFormState = {};
 
@@ -64,6 +66,11 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
   // handle pase lo que pase por debajo del dedo, pero igual conviene
   // filtrar por id (más de un dedo a la vez es un caso raro pero posible).
   const arrastreRef = useRef<number | null>(null);
+  // Confirmación antes de borrar (2026-08-17, pedido del cliente: "el
+  // problema es el mismo si elimino sin querer una foto o video" — a
+  // diferencia de los datos del formulario, esto SÍ se pierde para
+  // siempre en el momento, no hay "guardar y salir" que lo cubra).
+  const [fotoABorrar, setFotoABorrar] = useState<Foto | null>(null);
 
   // Limpia el input de archivo después de una subida exitosa, para poder
   // encadenar otra sin tener que reabrir el selector a mano.
@@ -76,6 +83,12 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
       await borrarFotoAction(alojamientoId, fotoId);
       router.refresh();
     });
+  }
+
+  function confirmarBorrado() {
+    if (!fotoABorrar) return;
+    borrar(fotoABorrar.id);
+    setFotoABorrar(null);
   }
 
   function soltarEn(destino: number) {
@@ -217,7 +230,7 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
               <button
                 type="button"
                 disabled={mutando}
-                onClick={() => borrar(foto.id)}
+                onClick={() => setFotoABorrar(foto)}
                 aria-label="Borrar foto"
                 className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-ink/80 text-sand opacity-100 transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100"
               >
@@ -265,6 +278,38 @@ export function FotosManager({ alojamientoId, fotos }: { alojamientoId: string; 
             : `Tocá un espacio vacío para agregar una foto o video. Arrastrá para cambiar el orden.`}
       </p>
       {state.error && <p role="alert" className="mt-1 text-sm text-coral-dark">{state.error}</p>}
+
+      {fotoABorrar && (
+        <Modal onClose={() => setFotoABorrar(null)} labelledBy="borrar-foto-titulo">
+          <h2 id="borrar-foto-titulo" className="font-display text-2xl">
+            ¿Borrar {fotoABorrar.tipo === "video" ? "este video" : "esta foto"}?
+          </h2>
+
+          {fotoABorrar.tipo === "foto" && (
+            <div className="relative mt-4 aspect-video w-full overflow-hidden rounded-md bg-sand-dim">
+              <Image src={fotoABorrar.url} alt="" fill sizes="500px" className="object-cover" />
+            </div>
+          )}
+
+          <p className="mt-4 text-sm text-ink-soft">
+            Esto no se puede deshacer — a diferencia de los datos de abajo, no hay un
+            &quot;Guardar y salir&quot; que lo cubra.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="button" onClick={confirmarBorrado} className={dangerButtonClass}>
+              Borrar
+            </button>
+            <button
+              type="button"
+              onClick={() => setFotoABorrar(null)}
+              className={secondaryButtonClass}
+            >
+              Cancelar
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

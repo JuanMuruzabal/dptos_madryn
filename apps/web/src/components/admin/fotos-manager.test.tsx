@@ -102,12 +102,41 @@ describe("FotosManager", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("las imágenes no pueden superar los 15MB");
   });
 
-  it("borrar una foto llama a borrarFotoAction y refresca", async () => {
-    render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Borrar foto" }));
+  describe("confirmación antes de borrar (2026-08-17, pedido del cliente)", () => {
+    it("clickear 'Borrar foto' NO borra directo, abre una confirmación", () => {
+      render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
+      fireEvent.click(screen.getByRole("button", { name: "Borrar foto" }));
 
-    await waitFor(() => expect(borrarFotoAction).toHaveBeenCalledWith("a-1", "f-1"));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
+      expect(borrarFotoAction).not.toHaveBeenCalled();
+      expect(screen.getByRole("dialog")).toHaveTextContent("¿Borrar esta foto?");
+    });
+
+    it("un video pregunta '¿Borrar este video?' y no muestra preview de imagen", () => {
+      render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1", tipo: "video" })]} />);
+      fireEvent.click(screen.getByRole("button", { name: "Borrar foto" }));
+
+      expect(screen.getByRole("dialog")).toHaveTextContent("¿Borrar este video?");
+      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    });
+
+    it("confirmar en el modal borra y refresca", async () => {
+      render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
+      fireEvent.click(screen.getByRole("button", { name: "Borrar foto" }));
+      fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+
+      await waitFor(() => expect(borrarFotoAction).toHaveBeenCalledWith("a-1", "f-1"));
+      await waitFor(() => expect(refresh).toHaveBeenCalled());
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("cancelar cierra el modal sin borrar nada", () => {
+      render(<FotosManager alojamientoId="a-1" fotos={[foto({ id: "f-1" })]} />);
+      fireEvent.click(screen.getByRole("button", { name: "Borrar foto" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+      expect(borrarFotoAction).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("el botón de borrar arranca visible (touch) y solo se oculta con mouse (pointer-fine)", () => {
