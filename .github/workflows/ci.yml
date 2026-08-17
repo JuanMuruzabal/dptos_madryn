@@ -160,13 +160,20 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Comprobar que el secret esté cargado
+      - name: Comprobar el secret y recortar espacios/saltos de línea
+        # Un secret pegado desde el navegador trae fácil un '\n' de más al
+        # final (curl lo rechaza entero: "URL rejected: malformed input",
+        # confirmado en la corrida anterior) — xargs sin argumentos recorta
+        # espacio en blanco de ambos lados de forma portable. Se guarda ya
+        # limpio en $GITHUB_ENV para que el step de abajo lo use tal cual.
         run: |
           if [ -z "$RENDER_SYNC_HOOK_URL" ]; then
             echo "::error::El secret RENDER_SYNC_HOOK_URL no está seteado en el repo (Settings → Secrets and variables → Actions)."
             exit 1
           fi
-          echo "Secret presente (longitud: ${#RENDER_SYNC_HOOK_URL} caracteres)."
+          cleaned=$(printf '%s' "$RENDER_SYNC_HOOK_URL" | xargs)
+          echo "Secret presente (longitud original: ${#RENDER_SYNC_HOOK_URL}, recortado: ${#cleaned})."
+          echo "RENDER_SYNC_HOOK_URL_CLEAN=$cleaned" >> "$GITHUB_ENV"
         env:
           RENDER_SYNC_HOOK_URL: ${{ secrets.RENDER_SYNC_HOOK_URL }}
 
@@ -176,7 +183,7 @@ jobs:
       # en vez de que curl lo descarte silenciosamente.
       - name: Disparar el Sync Hook de Render
         run: |
-          status=$(curl -sS -o response.txt -w "%{http_code}" -X POST "$RENDER_SYNC_HOOK_URL")
+          status=$(curl -sS -o response.txt -w "%{http_code}" -X POST "$RENDER_SYNC_HOOK_URL_CLEAN")
           echo "HTTP status: $status"
           echo "Respuesta:"
           cat response.txt
@@ -184,5 +191,3 @@ jobs:
             echo "::error::El Sync Hook devolvió status $status"
             exit 1
           fi
-        env:
-          RENDER_SYNC_HOOK_URL: ${{ secrets.RENDER_SYNC_HOOK_URL }}
