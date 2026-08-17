@@ -1,0 +1,48 @@
+# Ping periódico a los 2 servicios de Render (TR-045, docs/tradeoffs.md) —
+# ambos están en plan `free` (render.yaml), que se "duerme" solo a los 15
+# min sin recibir ningún request HTTP real (un healthCheckPath propio de
+# Render, como el de turismo-marcuzzi-api, NO cuenta para esto — Render
+# igual duerme el servicio en free aunque su healthcheck esté configurado).
+#
+# Bug real reportado por el cliente (2026-08-17): al reactivarse tras
+# dormir, las fotos no se veían y varias páginas tiraban "This page
+# couldn't load. A server error occurred." o "Ocurrió un error inesperado"
+# — causa: apps/web le habla a apps/api server-to-server en cada request
+# (todos los fetch de lib/api.ts usan cache:"no-store" a propósito, T2.2),
+# y si api TODAVÍA está despertando (puede tardar bastante en free) cuando
+# web ya recibió el request y lo reenvía, esa llamada falla/expira. Un
+# redeploy manual "arreglaba" esto solo porque de paso deja el servicio
+# despierto y caliente — no porque hubiera algo roto en el código.
+#
+# Con un ping cada 10 min (bajo los 15 min del límite de Render) ningún
+# servicio real llega a dormirse mientras el repo tenga actividad de CI,
+# así que un visitante real nunca debería pisar la ventana de cold start.
+name: Keep Render services awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping api + web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping turismo-marcuzzi-api
+        run: |
+          codigo=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+            "https://turismo-marcuzzi-api.onrender.com/health" || echo "000")
+          echo "api: HTTP $codigo"
+          if [ "$codigo" = "000" ]; then
+            echo "::warning::No se pudo contactar a turismo-marcuzzi-api (puede estar recién despertando)"
+          fi
+
+      - name: Ping turismo-marcuzzi-web
+        run: |
+          codigo=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+            "https://turismo-marcuzzi-web.onrender.com/" || echo "000")
+          echo "web: HTTP $codigo"
+          if [ "$codigo" = "000" ]; then
+            echo "::warning::No se pudo contactar a turismo-marcuzzi-web (puede estar recién despertando)"
+          fi
