@@ -23,15 +23,21 @@ describe("AccountStatus", () => {
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar");
   });
 
-  it("sin sesión, variant inline muestra Ingresar como recuadro delineado naranja", async () => {
+  it("sin sesión, variant inline muestra Ingresar como píldora rellena coral, ancho automático", async () => {
     getSession.mockResolvedValue(null);
     render((await AccountStatus({ variant: "inline" })) as React.ReactElement);
     const link = screen.getByRole("link", { name: "Ingresar" });
     expect(link).toHaveAttribute("href", "/ingresar");
-    // Mismo recuadro que "Cerrar sesión" logueado (2026-08-17), en naranja.
-    expect(link.className).toContain("rounded-[12px]");
-    expect(link.className).toContain("border-[rgba(230,126,34,0.45)]");
-    expect(link.className).toContain("text-[#e67e22]");
+    // Píldora rellena (2026-08-17), no el recuadro delineado de la ronda
+    // anterior: ancho automático (inline-flex, no w-full), fondo coral
+    // sólido, texto/ícono en tono oscuro.
+    expect(link.className).toContain("inline-flex");
+    expect(link.className).not.toContain("w-full");
+    expect(link.className).toContain("rounded-full");
+    expect(link.className).toContain("bg-[#e07a5f]");
+    expect(link.className).toContain("text-[#3a140c]");
+    // Alineado a la izquierda, no centrado.
+    expect(link.parentElement?.className).toContain("justify-start");
   });
 
   it("con sesión de cliente, renderiza AccountMenu sin admin, variant dropdown por defecto", async () => {

@@ -37,17 +37,20 @@ export async function AccountStatus({
 
   if (!session) {
     return variant === "inline" ? (
-      // Mismo recuadro delineado y misma ubicación que "Cerrar sesión"
-      // logueado (2026-08-17, pedido del cliente: "mismo estilo misma
-      // ubicacion... pero que diga ingresar y de un color mas
-      // anaranjado") — antes era un pill centrado, dos rondas atrás un
-      // link de texto plano; naranja (#e67e22) en vez del coral de Cerrar
-      // sesión para distinguir "entrar" de "salir" a simple vista.
+      // Botón relleno tipo píldora, ancho automático (2026-08-17, pedido
+      // del cliente) — reemplaza el recuadro delineado de ancho completo
+      // de la ronda anterior. pl-6 (24px) en el contenedor, no los ~12px
+      // que tanteó el cliente en su pedido: es el inset real que usan las
+      // demás opciones del drawer (border-l-[3px] + pl-[21px] en
+      // site-header.tsx/CuentaInline = 24px hasta el ícono), así el botón
+      // queda genuinamente alineado con ellas — el pedido explícito era
+      // "al mismo margen que las opciones del menú", eso pesa más que el
+      // número aproximado que dio.
       <div className="mt-2 w-full border-t border-sand/15 pt-3">
-        <div className="mx-6">
+        <div className="flex justify-start pl-6">
           <Link
             href="/ingresar"
-            className="flex items-center gap-3 rounded-[12px] border border-[rgba(230,126,34,0.45)] px-[14px] py-[13px] text-sm font-normal text-[#e67e22] transition-colors"
+            className="inline-flex items-center gap-2 rounded-full bg-[#e07a5f] px-[26px] py-[13px] text-sm font-semibold text-[#3a140c] transition-colors"
           >
             <LogIn size={16} strokeWidth={1.75} aria-hidden />
             Ingresar

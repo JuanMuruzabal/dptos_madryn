@@ -73,7 +73,7 @@ describe("AccountMenu", () => {
     expect(boton).toHaveAttribute("aria-expanded", "true");
   });
 
-  describe("recuadros del dropdown (2026-08-17, mismo estilo que el panel admin/mobile)", () => {
+  describe("dropdown pegado de borde a borde (2026-08-17, pedido del cliente)", () => {
     it("cada opción tiene su ícono", () => {
       render(<AccountMenu esAdmin />);
       fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
@@ -83,27 +83,35 @@ describe("AccountMenu", () => {
       }
     });
 
-    it("marca la ruta activa con fondo verde petróleo y texto crema", () => {
+    it("cada opción ocupa todo el ancho, sin border-radius individual, fondo blanco", () => {
+      render(<AccountMenu esAdmin />);
+      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
+      for (const nombre of ["Mi perfil", "Mi cronograma", "Panel admin"]) {
+        const link = screen.getByRole("link", { name: nombre });
+        expect(link.className).toContain("w-full");
+        expect(link.className).toContain("bg-white");
+        expect(link.className).not.toMatch(/rounded-\[/);
+      }
+    });
+
+    it("el panel contenedor no tiene padding ni gap, y recorta las esquinas con overflow-hidden", () => {
+      const { container } = render(<AccountMenu />);
+      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
+      const panel = container.querySelector(".divide-y");
+      expect(panel).toBeInTheDocument();
+      expect(panel?.className).toContain("overflow-hidden");
+      expect(panel?.className).toContain("rounded-md");
+      expect(panel?.className).not.toMatch(/\bp-\d/);
+      expect(panel?.className).not.toMatch(/\bgap-/);
+    });
+
+    it("ya no marca ninguna ruta como activa (se sacó el fondo relleno)", () => {
       usePathname.mockReturnValue("/cronograma");
       render(<AccountMenu />);
       fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
-
-      const activo = screen.getByRole("link", { name: "Mi cronograma" });
-      expect(activo.className).toContain("bg-[#193b44]");
-      expect(activo.className).toContain("text-[#f5f1e8]");
-
-      const inactivo = screen.getByRole("link", { name: "Mi perfil" });
-      expect(inactivo.className).toContain("bg-white");
-      expect(inactivo.className).not.toContain("bg-[#193b44]");
-    });
-
-    it("Cerrar sesión nunca se marca como activo", () => {
-      usePathname.mockReturnValue("/perfil");
-      render(<AccountMenu />);
-      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
-      expect(screen.getByRole("button", { name: "Cerrar sesión" }).className).not.toContain(
-        "bg-[#193b44]",
-      );
+      for (const nombre of ["Mi perfil", "Mi cronograma"]) {
+        expect(screen.getByRole("link", { name: nombre }).className).not.toContain("bg-[#193b44]");
+      }
     });
   });
 

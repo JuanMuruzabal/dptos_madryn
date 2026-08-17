@@ -6,26 +6,17 @@ import { useEffect, useRef, useState } from "react";
 import { Calendar, LogOut, Settings, User } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 
-// Recuadro redondeado (2026-08-17, pedido del cliente: "en pc cambie el
-// formato del panel de control por el mas reciente... lo mismo que los
-// campos cuando uno toca el icono de usuario, quiero que el estilo sea
-// similar al reciente aplicado en mobile") — mismos colores que AdminNav
-// (admin-nav.tsx): activo = verde petróleo relleno + texto crema, inactivo
-// = blanco con borde tenue + texto gris oscuro. Pensado para el fondo
-// claro del dropdown (bg-sand), a diferencia de CuentaInline (fondo
-// oscuro del drawer mobile) — mismo lenguaje visual (recuadro + ícono +
-// ruta activa marcada), colores adaptados al contexto claro.
-const DROPDOWN_ACTIVE = "bg-[#193b44] text-[#f5f1e8]";
-const DROPDOWN_INACTIVE = "border border-[rgba(0,0,0,0.1)] bg-white text-[#3a5259] hover:bg-black/[0.03]";
-const dropdownItemClass = (activo: boolean) =>
-  `flex items-center gap-2.5 rounded-[12px] px-3.5 py-2.5 text-left text-sm font-medium transition-colors ${
-    activo ? DROPDOWN_ACTIVE : DROPDOWN_INACTIVE
-  }`;
-// Cerrar sesión queda con su propio recuadro (mismo shape, no es una ruta
-// así que nunca usa el fondo "activo") — mismo criterio que en
-// CuentaInline: acción de bajo peso, aparte de la navegación.
+// Lista pegada de borde a borde, sin gap ni padding individual
+// (2026-08-17, pedido del cliente) — reemplaza el recuadro-por-opción con
+// separación de la ronda anterior. Fondo blanco uniforme en las 4
+// opciones: se saca la diferenciación de "ruta activa" con fondo relleno
+// que tenía esta lista (pedido explícito: "Manten el fondo blanco de cada
+// opcion") — la marca de ruta activa SIGUE existiendo en el drawer mobile
+// (CuentaInline, barra coral a la izquierda), acá se simplifica nomás.
+const dropdownItemClass =
+  "flex w-full items-center gap-2.5 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-[#3a5259] transition-colors hover:bg-black/[0.03]";
 const dropdownLogoutClass =
-  "flex items-center gap-2.5 rounded-[12px] border border-[rgba(0,0,0,0.1)] bg-white px-3.5 py-2.5 text-left text-sm font-medium text-coral-dark transition-colors hover:bg-black/[0.03]";
+  "flex w-full items-center gap-2.5 bg-white px-3.5 py-2.5 text-left text-sm font-medium text-coral-dark transition-colors hover:bg-black/[0.03]";
 
 /** Rutas + íconos compartidos entre el dropdown de escritorio y el bloque
  * de cuenta del drawer mobile (CuentaInline) — mismas 2 rutas, mismos
@@ -37,26 +28,26 @@ const CUENTA_LINKS = [
 
 /** Opciones del dropdown de escritorio (variant="dropdown"). El mobile
  * (variant="inline") tiene su propio componente, CuentaInline más abajo —
- * mismas rutas/íconos, colores distintos por el fondo oscuro del drawer. */
+ * mismas rutas/íconos, colores distintos por el fondo oscuro del drawer.
+ * Sin ruta activa marcada acá (2026-08-17, ver dropdownItemClass) — no
+ * hace falta usePathname. */
 function Opciones({ esAdmin, onNavigate }: { esAdmin: boolean; onNavigate: () => void }) {
-  const pathname = usePathname();
-
   return (
     <>
       {CUENTA_LINKS.map(({ href, label, Icon }) => (
-        <Link key={href} href={href} onClick={onNavigate} className={dropdownItemClass(pathname === href)}>
+        <Link key={href} href={href} onClick={onNavigate} className={dropdownItemClass}>
           <Icon size={16} strokeWidth={1.75} aria-hidden />
           {label}
         </Link>
       ))}
       {esAdmin && (
-        <Link href="/admin" onClick={onNavigate} className={dropdownItemClass(pathname === "/admin")}>
+        <Link href="/admin" onClick={onNavigate} className={dropdownItemClass}>
           <Settings size={16} strokeWidth={1.75} aria-hidden />
           Panel admin
         </Link>
       )}
       <form action={logoutAction} className="w-full">
-        <button type="submit" className={`w-full ${dropdownLogoutClass}`}>
+        <button type="submit" className={dropdownLogoutClass}>
           <LogOut size={16} strokeWidth={1.75} aria-hidden />
           Cerrar sesión
         </button>
@@ -200,8 +191,16 @@ export function AccountMenu({
         </svg>
       </button>
 
+      {/* Sin gap ni padding (2026-08-17, pedido del cliente): cada opción
+          (Opciones, arriba) ya es un <a>/<button> w-full con su propio
+          padding, así que se pegan una a la otra directo. divide-y dibuja
+          la línea de 1px ENTRE opciones (no en los bordes exteriores) sin
+          tener que ponerle un borde a cada una a mano. overflow-hidden +
+          el rounded-md del panel: las opciones de los extremos (fondo
+          blanco, sin su propio border-radius) quedan recortadas por la
+          curva del panel en vez de sobresalir en las esquinas. */}
       {abierto && (
-        <div className="absolute right-0 top-full mt-2 flex w-56 flex-col gap-1.5 rounded-md border border-ink/10 bg-sand p-2 text-ink shadow-2xl">
+        <div className="absolute right-0 top-full mt-2 w-56 divide-y divide-[rgba(0,0,0,0.08)] overflow-hidden rounded-md border border-ink/10 bg-white text-ink shadow-2xl">
           <Opciones esAdmin={esAdmin} onNavigate={() => setAbierto(false)} />
         </div>
       )}
