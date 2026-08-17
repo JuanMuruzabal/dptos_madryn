@@ -65,4 +65,71 @@ describe("AlojamientoForm", () => {
 
     expect(await screen.findByText("Guardado.")).toBeInTheDocument();
   });
+
+  it("aplica el formId al <form>, para que un botón externo lo pueda enviar", () => {
+    const { container } = render(
+      <AlojamientoForm alojamiento={alojamiento()} action={action} formId="mi-form" />,
+    );
+    expect(container.querySelector("form")).toHaveAttribute("id", "mi-form");
+  });
+
+  describe("aviso de cambios sin guardar (2026-08-17, pedido del cliente)", () => {
+    it("tocar un campo llama a onDirtyChange(true)", async () => {
+      const onDirtyChange = vi.fn();
+      const user = userEvent.setup();
+      render(<AlojamientoForm alojamiento={alojamiento()} action={action} onDirtyChange={onDirtyChange} />);
+
+      await user.type(screen.getByLabelText("Nombre"), "x");
+
+      expect(onDirtyChange).toHaveBeenCalledWith(true);
+    });
+
+    it("guardar con éxito llama a onDirtyChange(false) y a onSubmitResult(true)", async () => {
+      action.mockResolvedValue({ success: true });
+      const onDirtyChange = vi.fn();
+      const onSubmitResult = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <AlojamientoForm
+          alojamiento={alojamiento()}
+          action={action}
+          onDirtyChange={onDirtyChange}
+          onSubmitResult={onSubmitResult}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+      await screen.findByText("Guardado.");
+      expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+      expect(onSubmitResult).toHaveBeenCalledWith(true);
+    });
+
+    it("guardar con error llama a onSubmitResult(false), sin resetear dirty", async () => {
+      action.mockResolvedValue({ error: "falló" });
+      const onDirtyChange = vi.fn();
+      const onSubmitResult = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <AlojamientoForm
+          alojamiento={alojamiento()}
+          action={action}
+          onDirtyChange={onDirtyChange}
+          onSubmitResult={onSubmitResult}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+      await screen.findByRole("alert");
+      expect(onSubmitResult).toHaveBeenCalledWith(false);
+      expect(onDirtyChange).not.toHaveBeenCalledWith(false);
+    });
+
+    it("sin tocar nada, no llama a onDirtyChange", () => {
+      const onDirtyChange = vi.fn();
+      render(<AlojamientoForm alojamiento={alojamiento()} action={action} onDirtyChange={onDirtyChange} />);
+      expect(onDirtyChange).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -68,7 +68,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
           onClose();
         }}
         aria-label="Cerrar"
-        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-ink/60 text-sand backdrop-blur-sm transition-colors hover:bg-ink/80"
       >
         <X size={22} aria-hidden />
       </button>
@@ -89,7 +89,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
               setIndex((i) => (i - 1 + fotos.length) % fotos.length);
             }}
             aria-label="Foto anterior"
-            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:left-6"
+            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink/60 text-sand backdrop-blur-sm transition-colors hover:bg-ink/80 md:left-6"
           >
             <ChevronLeft size={26} aria-hidden />
           </button>
@@ -100,7 +100,7 @@ export function PhotoLightbox({ fotos, nombre, initialIndex, onClose }: PhotoLig
               setIndex((i) => (i + 1) % fotos.length);
             }}
             aria-label="Foto siguiente"
-            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-sand/10 text-sand transition-colors hover:bg-sand/20 md:right-6"
+            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink/60 text-sand backdrop-blur-sm transition-colors hover:bg-ink/80 md:right-6"
           >
             <ChevronRight size={26} aria-hidden />
           </button>

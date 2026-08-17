@@ -11,10 +11,8 @@ import { LocationMapLoader } from "@/components/alojamiento/location-map-loader"
 import { StarRating } from "@/components/alojamiento/star-rating";
 import { ResenasList } from "@/components/alojamiento/resenas-list";
 import { ResenaForm } from "@/components/alojamiento/resena-form";
-import { AlojamientoForm } from "@/components/admin/alojamiento-form";
-import { FotosManager } from "@/components/admin/fotos-manager";
-import { actualizarAlojamientoAction, activarAlojamientoAction } from "@/app/actions/admin";
-import { primaryButtonClass, secondaryButtonClass } from "@/components/admin/ui";
+import { ModoEditor } from "@/components/admin/modo-editor";
+import { primaryButtonClass } from "@/components/admin/ui";
 
 // Sin shell estático real acá (todo depende del `id`) y con notFound()
 // necesitando un status HTTP correcto (ver comentario más abajo), esta
@@ -155,19 +153,27 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
                 {formatARS(alojamiento.precioNoche)}
                 <span className="text-sm text-ink-soft"> /noche</span>
               </p>
-              <div className="mt-6">
-                <AvailabilityCalendar
-                  alojamientoId={id}
-                  alojamientoNombre={alojamiento.nombre}
-                  ocupado={disponibilidad.ocupado}
-                  misReservasAqui={misReservasAqui}
-                  tieneReservaPendiente={tieneReservaPendiente}
-                  precioNoche={alojamiento.precioNoche}
-                  estaLogueado={Boolean(token)}
-                  contactoPrefill={usuario ? contactoPrefillDesdeUsuario(usuario) : undefined}
-                  esAdmin={esAdmin}
-                />
-              </div>
+              {/* Sin calendario en modo editor (2026-08-17, pedido del
+                  cliente) — es la vista de editar datos/fotos, no de
+                  reservar (esAdmin ya bloqueaba la interacción, pero
+                  mostrarlo igual era ruido visual sin motivo mientras se
+                  edita). El precio de arriba se queda: sigue siendo
+                  contexto útil, y ya es editable desde AlojamientoForm. */}
+              {!modoEditor && (
+                <div className="mt-6">
+                  <AvailabilityCalendar
+                    alojamientoId={id}
+                    alojamientoNombre={alojamiento.nombre}
+                    ocupado={disponibilidad.ocupado}
+                    misReservasAqui={misReservasAqui}
+                    tieneReservaPendiente={tieneReservaPendiente}
+                    precioNoche={alojamiento.precioNoche}
+                    estaLogueado={Boolean(token)}
+                    contactoPrefill={usuario ? contactoPrefillDesdeUsuario(usuario) : undefined}
+                    esAdmin={esAdmin}
+                  />
+                </div>
+              )}
             </div>
           </aside>
         </div>
@@ -202,83 +208,6 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
         )}
       </div>
     </main>
-  );
-}
-
-/**
- * Modo editor (T4.14/T4.15) — reemplaza la galería/info normales cuando
- * un admin llega acá con `?modo=editor` (desde "Editar" en el panel, desde
- * "Modo editor" en la propia tarjeta del listado, o directo al crear un
- * alojamiento nuevo, T4.19). La foto de portada YA NO se edita acá — se
- * trasladó a la tarjeta del listado (foto-portada-card-editor.tsx, pedido
- * del cliente 2026-08-13): acá solo quedan los datos/precio y la galería
- * de fotos/video del detalle.
- */
-function ModoEditor({
-  id,
-  alojamiento,
-}: {
-  id: string;
-  alojamiento: NonNullable<Awaited<ReturnType<typeof fetchAlojamiento>>>;
-}) {
-  const actualizar = actualizarAlojamientoAction.bind(null, id);
-  const publicar = activarAlojamientoAction.bind(null, id);
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-md border border-dune/30 bg-dune/10 px-4 py-2.5">
-        <p className="tracked-caps text-xs font-semibold text-[#8a6a2e]">Modo editor</p>
-        <div className="flex gap-2">
-          <Link href={`/alojamiento/${id}`} className={`${secondaryButtonClass} px-4 py-1.5 text-xs`}>
-            Ver página
-          </Link>
-          <Link href="/admin/alojamientos" className={`${secondaryButtonClass} px-4 py-1.5 text-xs`}>
-            Volver al panel
-          </Link>
-        </div>
-      </div>
-
-      {/* T4.19: un alojamiento recién creado (o dado de baja) queda oculto
-          del listado público hasta que se publica a propósito — evita que
-          un borrador a medio completar (sin fotos, con datos de relleno)
-          aparezca ahí mientras el admin todavía lo está armando. */}
-      {!alojamiento.activo && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-md border border-coral/30 bg-coral/10 px-4 py-2.5">
-          <div>
-            <p className="tracked-caps text-xs font-semibold text-coral-dark">Todavía no publicado</p>
-            <p className="mt-1 text-xs text-ink-soft">
-              No aparece en el listado de alojamientos hasta que lo publiques.
-            </p>
-          </div>
-          <form action={publicar}>
-            <button type="submit" className={`${primaryButtonClass} px-4 py-1.5 text-xs`}>
-              Publicar
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* T4.21 (pedido del cliente, 2026-08-14): orden fotos → datos y
-          precio → ubicación — antes era datos primero. La ubicación
-          (LocationPicker) vive DENTRO de AlojamientoForm, al final del
-          form (ver alojamiento-form.tsx), así que queda última sin
-          necesitar una tercera sección separada acá. */}
-      <section className="rounded-md border border-ink/10 bg-white p-6 shadow-sm">
-        <h2 className="tracked-caps text-xs font-semibold text-ink-soft">
-          Fotos y video de la página del alojamiento
-        </h2>
-        <div className="mt-4">
-          <FotosManager alojamientoId={id} fotos={alojamiento.fotos} />
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-md border border-ink/10 bg-white p-6 shadow-sm">
-        <h2 className="tracked-caps text-xs font-semibold text-ink-soft">Datos, precio y ubicación</h2>
-        <div className="mt-4">
-          <AlojamientoForm alojamiento={alojamiento} action={actualizar} />
-        </div>
-      </section>
-    </div>
   );
 }
 

@@ -15,6 +15,12 @@ interface LocationPickerProps {
   direccionInicial?: string;
   latInicial?: number;
   lngInicial?: number;
+  /** Se llama cada vez que cambian las coordenadas por arrastrar/clickear
+   * el mapa (2026-08-17) — a diferencia del input de dirección (que ya es
+   * un <input> controlado normal, su propio onChange alcanza), mover el
+   * pin actualiza lat/lng por JS directo, sin disparar un evento nativo
+   * que el onChange delegado del <form> padre pueda escuchar solo. */
+  onChange?: () => void;
 }
 
 function coordsIniciales(lat?: number, lng?: number) {
@@ -40,7 +46,7 @@ function coordsIniciales(lat?: number, lng?: number) {
  * por vez) cumple el límite de 1 req/seg sin tener que armar un proxy en
  * apps/api con headers propios para un caso de uso tan chico.
  */
-export function LocationPicker({ direccionInicial, latInicial, lngInicial }: LocationPickerProps) {
+export function LocationPicker({ direccionInicial, latInicial, lngInicial, onChange }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
@@ -54,6 +60,18 @@ export function LocationPicker({ direccionInicial, latInicial, lngInicial }: Loc
   const [coords, setCoords] = useState(() => coordsIniciales(latInicial, lngInicial));
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Los handlers de Leaflet (dragend/click del mapa) se registran una sola
+  // vez en el efecto de montaje ([]) — leer onChange a través de un ref
+  // evita que queden con la referencia de la primera vez que se montó el
+  // componente si el prop cambia de identidad entre renders. Sincronizar
+  // el ref en un efecto propio, NO directo en el cuerpo del render —
+  // escribir ref.current durante el render viola react-hooks/refs (mismo
+  // motivo documentado en site-header.tsx/modal.tsx para el caso de
+  // estado, acá aplica la variante de refs).
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +109,7 @@ export function LocationPicker({ direccionInicial, latInicial, lngInicial }: Loc
       marker.on("dragend", () => {
         const pos = marker.getLatLng();
         setCoords({ lat: pos.lat, lng: pos.lng });
+        onChangeRef.current?.();
       });
 
       // Click en cualquier punto del mapa también reubica el pin — misma
@@ -98,6 +117,7 @@ export function LocationPicker({ direccionInicial, latInicial, lngInicial }: Loc
       map.on("click", (e: LeafletMouseEvent) => {
         marker.setLatLng(e.latlng);
         setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+        onChangeRef.current?.();
       });
     })();
 
@@ -113,6 +133,7 @@ export function LocationPicker({ direccionInicial, latInicial, lngInicial }: Loc
     setCoords({ lat, lng });
     markerRef.current?.setLatLng([lat, lng]);
     mapRef.current?.setView([lat, lng], 16);
+    onChangeRef.current?.();
   }
 
   async function buscarDireccion() {

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import type { Alojamiento } from "@turismo-marcuzzi/shared-types";
 import type { AdminFormState } from "@/app/actions/admin";
 import { inputClass, labelClass, primaryButtonClass } from "@/components/admin/ui";
@@ -31,14 +31,44 @@ const initialState: AdminFormState = {};
 export function AlojamientoForm({
   alojamiento,
   action,
+  formId,
+  onDirtyChange,
+  onSubmitResult,
 }: {
   alojamiento?: Alojamiento;
   action: (prevState: AdminFormState, formData: FormData) => Promise<AdminFormState>;
+  /** id del <form> real — deja que un botón AFUERA del form lo dispare
+   * (atributo HTML `form="..."`, sin JS de por medio) desde el modal de
+   * "cambios sin guardar" de ModoEditor (2026-08-17, pedido del cliente). */
+  formId?: string;
+  /** Avisa al padre (ModoEditor) cada vez que hay un cambio sin enviar
+   * todavía, para la advertencia al salir sin guardar. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Se llama una sola vez por cada intento de guardado que termina
+   * (éxito o error) — el padre lo usa para saber cuándo puede completar
+   * una navegación que había quedado pendiente por el aviso. */
+  onSubmitResult?: (success: boolean) => void;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
 
+  // No dispara en el estado inicial ({}), que no tiene ni success ni
+  // error — recién después de un submit real, sea éxito o falla.
+  const yaAvisado = useRef(state);
+  useEffect(() => {
+    if (yaAvisado.current === state) return;
+    yaAvisado.current = state;
+    if (!state.success && !state.error) return;
+    if (state.success && !state.error) onDirtyChange?.(false);
+    onSubmitResult?.(Boolean(state.success && !state.error));
+  }, [state, onDirtyChange, onSubmitResult]);
+
   return (
-    <form action={formAction} className="max-w-xl space-y-5">
+    <form
+      id={formId}
+      action={formAction}
+      onChange={() => onDirtyChange?.(true)}
+      className="max-w-xl space-y-5"
+    >
       <div>
         <label htmlFor="nombre" className={labelClass}>Nombre</label>
         <input id="nombre" name="nombre" required defaultValue={alojamiento?.nombre} className={inputClass} />
@@ -92,10 +122,17 @@ export function AlojamientoForm({
           2026-08-14): el orden visual de ModoEditor pasó a ser
           fotos → datos y precio → ubicación, así que el mapa queda
           como lo último que se completa, no en el medio del form. */}
+      {/* onChange acá aparte del onChange del <form> de arriba (2026-08-17):
+          arrastrar/clickear el pin en el mapa cambia lat/lng por JS
+          (inputs ocultos que React actualiza directo), eso NO dispara un
+          evento nativo input/change real — el onChange delegado del form
+          nunca se entera. LocationPicker llama a este callback a mano en
+          cada uno de esos casos. */}
       <LocationPicker
         direccionInicial={alojamiento?.direccion}
         latInicial={alojamiento?.lat}
         lngInicial={alojamiento?.lng}
+        onChange={() => onDirtyChange?.(true)}
       />
 
       {state.error && (

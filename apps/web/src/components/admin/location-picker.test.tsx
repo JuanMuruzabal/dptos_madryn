@@ -155,4 +155,47 @@ describe("LocationPicker", () => {
     unmount();
     expect(map.remove).toHaveBeenCalled();
   });
+
+  describe("onChange (2026-08-17, aviso de cambios sin guardar)", () => {
+    it("arrastrar el pin llama a onChange", async () => {
+      const onChange = vi.fn();
+      render(<LocationPicker onChange={onChange} />);
+      await waitFor(() => expect(leafletDefault.map).toHaveBeenCalled());
+
+      const dragendCb = marker.on.mock.calls.find(([evento]) => evento === "dragend")?.[1] as () => void;
+      dragendCb();
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("clickear el mapa llama a onChange", async () => {
+      const onChange = vi.fn();
+      render(<LocationPicker onChange={onChange} />);
+      await waitFor(() => expect(leafletDefault.map).toHaveBeenCalled());
+
+      const clickCb = map.on.mock.calls.find(([evento]) => evento === "click")?.[1] as (e: unknown) => void;
+      clickCb({ latlng: { lat: -41.5, lng: -64.5 } });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("geocodificar una dirección encontrada llama a onChange", async () => {
+      mockGeocodeOnce([{ lat: "-42.80", lon: "-65.10" }]);
+      const onChange = vi.fn();
+      render(<LocationPicker onChange={onChange} />);
+      await waitFor(() => expect(leafletDefault.map).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText("Dirección"), { target: { value: "Blvd. Brown 1234" } });
+      fireEvent.click(screen.getByRole("button", { name: /buscar en el mapa/i }));
+
+      await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    });
+
+    it("sin onChange (prop opcional), arrastrar el pin no revienta", async () => {
+      render(<LocationPicker />);
+      await waitFor(() => expect(leafletDefault.map).toHaveBeenCalled());
+      const dragendCb = marker.on.mock.calls.find(([evento]) => evento === "dragend")?.[1] as () => void;
+      expect(() => dragendCb()).not.toThrow();
+    });
+  });
 });
