@@ -17,16 +17,24 @@ beforeEach(() => {
 });
 
 describe("AccountStatus", () => {
-  it("sin sesión, muestra el link de Ingresar", async () => {
+  it("sin sesión, muestra el link de Ingresar (variant dropdown por defecto)", async () => {
     getSession.mockResolvedValue(null);
     render((await AccountStatus()) as React.ReactElement);
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar");
   });
 
-  it("con sesión de cliente, renderiza AccountMenu sin admin", async () => {
+  it("sin sesión, variant inline muestra Ingresar como link plano de nav", async () => {
+    getSession.mockResolvedValue(null);
+    render((await AccountStatus({ variant: "inline" })) as React.ReactElement);
+    const link = screen.getByRole("link", { name: "Ingresar" });
+    expect(link).toHaveAttribute("href", "/ingresar");
+    expect(link.className).toContain("w-full");
+  });
+
+  it("con sesión de cliente, renderiza AccountMenu sin admin, variant dropdown por defecto", async () => {
     getSession.mockResolvedValue({ rol: "cliente" });
     render((await AccountStatus()) as React.ReactElement);
-    expect(AccountMenu).toHaveBeenCalledWith({ esAdmin: false }, undefined);
+    expect(AccountMenu).toHaveBeenCalledWith({ esAdmin: false, variant: "dropdown" }, undefined);
     expect(screen.getByText("cliente")).toBeInTheDocument();
   });
 
@@ -34,6 +42,12 @@ describe("AccountStatus", () => {
     getSession.mockResolvedValue({ rol: "administrador" });
     render((await AccountStatus()) as React.ReactElement);
     expect(screen.getByText("admin")).toBeInTheDocument();
+  });
+
+  it("con sesión, variant inline se propaga a AccountMenu", async () => {
+    getSession.mockResolvedValue({ rol: "cliente" });
+    render((await AccountStatus({ variant: "inline" })) as React.ReactElement);
+    expect(AccountMenu).toHaveBeenCalledWith({ esAdmin: false, variant: "inline" }, undefined);
   });
 });
 

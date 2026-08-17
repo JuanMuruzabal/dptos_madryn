@@ -46,10 +46,16 @@ const NAV_LINKS = [
  */
 export function SiteHeader({
   accountSlot,
+  accountSlotMobile,
   bannerSlot,
   notificationsSlot,
 }: {
   accountSlot: ReactNode;
+  /** Variante "inline" de AccountStatus (2026-08-17, pedido del cliente)
+   * — opciones planas en el menú mobile en vez de repetir el mismo
+   * ícono+dropdown pensado para el header de escritorio. Ver
+   * account-menu.tsx. */
+  accountSlotMobile: ReactNode;
   bannerSlot: ReactNode;
   notificationsSlot: ReactNode;
 }) {
@@ -193,18 +199,16 @@ export function SiteHeader({
               {link.label}
             </Link>
           ))}
-          {/* flex justify-end (bug real 2026-08-17): sin esto, accountSlot
-              heredaba items-start (alineado a la izquierda, como los nav
-              links de arriba) — el dropdown de AccountMenu se posiciona con
-              `right-0` relativo a SU PROPIO botón (pensado para el header
-              de escritorio, donde ese botón está cerca del borde derecho),
-              así que con el botón a la izquierda el menú se abría fuera de
-              la pantalla por la izquierda. Alineando el botón a la derecha
-              acá también, el mismo `right-0` vuelve a comportarse bien sin
-              tocar AccountMenu — y de paso lo separa visualmente de la
-              navegación en vez de quedar pegado. */}
-          <div className="mt-3 flex w-full justify-end border-t border-sand/15 pt-4">
-            {accountSlot}
+          {/* accountSlotMobile (2026-08-17, pedido del cliente): opciones
+              planas (Mi perfil/Mi cronograma/Panel admin/Cerrar sesión),
+              no el ícono+dropdown de escritorio — ver account-menu.tsx. Ya
+              no hace falta alinearlo a la derecha (ese ajuste era para que
+              el dropdown de AccountMenu no se abriera fuera de pantalla;
+              sin dropdown acá, el problema no existe), vuelve a heredar
+              items-start como el resto del nav. El separador visual queda
+              igual. */}
+          <div className="mt-3 w-full border-t border-sand/15 pt-4">
+            {accountSlotMobile}
           </div>
         </nav>
       )}

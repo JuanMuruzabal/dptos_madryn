@@ -64,4 +64,24 @@ describe("AccountMenu", () => {
     fireEvent.click(boton);
     expect(boton).toHaveAttribute("aria-expanded", "true");
   });
+
+  describe("variant inline (menú mobile, 2026-08-17)", () => {
+    it("muestra las opciones directo, sin botón ni toggle", () => {
+      render(<AccountMenu variant="inline" />);
+      expect(screen.queryByRole("button", { name: /mi cuenta/i })).not.toBeInTheDocument();
+      expect(screen.getByText("Mi perfil")).toBeInTheDocument();
+      expect(screen.getByText("Mi cronograma")).toBeInTheDocument();
+      expect(screen.getByText("Cerrar sesión")).toBeInTheDocument();
+    });
+
+    it("no muestra 'Panel admin' para un usuario que no es admin", () => {
+      render(<AccountMenu variant="inline" esAdmin={false} />);
+      expect(screen.queryByText("Panel admin")).not.toBeInTheDocument();
+    });
+
+    it("muestra 'Panel admin' cuando esAdmin es true", () => {
+      render(<AccountMenu variant="inline" esAdmin />);
+      expect(screen.getByText("Panel admin")).toBeInTheDocument();
+    });
+  });
 });

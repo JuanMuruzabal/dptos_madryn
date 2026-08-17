@@ -94,10 +94,11 @@ export function Hero({ scenes }: { scenes: SceneData[] }) {
             los botones, no centrada"): en una pantalla angosta esa esquina
             queda cerca de donde terminan los botones si estos wrappean a
             dos líneas. Desde md, vuelve al posicionamiento absoluto
-            original (esquina inferior derecha del bloque de texto — este
-            div ya es `relative`, así que `md:right-0 md:bottom-0` ancla
-            en el mismo lugar que antes). */}
-        <div className="mt-8 flex items-center justify-center gap-3 md:absolute md:right-0 md:bottom-0 md:mt-0 md:justify-end">
+            (esquina inferior derecha del bloque de texto — este div ya es
+            `relative`) con margen real (`md:right-6 md:bottom-6`, no
+            `right-0 bottom-0`; bug real 2026-08-17 #2: quedaba pegada al
+            borde exacto la primera vez que se anidó acá adentro). */}
+        <div className="mt-8 flex items-center justify-center gap-3 md:absolute md:right-6 md:bottom-6 md:mt-0 md:justify-end">
           <AnimatePresence mode="wait">
             <motion.span
               key={scene.place}

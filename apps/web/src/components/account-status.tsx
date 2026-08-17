@@ -11,28 +11,42 @@ const pillClass =
  * src/app/layout.tsx) y no volver dinámica toda la app — ver
  * next.config.ts (`cacheComponents`).
  *
- * Se renderiza tal cual en el pill de desktop y dentro del panel mobile
- * (site-header.tsx) — mismo componente, dos posiciones en el árbol; no
- * necesita saber de "solid"/scroll, por eso usa el acento coral fijo en
- * vez de invertir color según fondo transparente/sólido.
+ * `variant` (2026-08-17, pedido del cliente): `app/layout.tsx` monta DOS
+ * instancias de este componente — una para el pill de escritorio
+ * (`variant="dropdown"`, default) y otra para el panel mobile
+ * (`variant="inline"`, ver site-header.tsx) — en vez de una sola
+ * reutilizada en dos posiciones del árbol como antes. Hacía falta poder
+ * pasarle una variante distinta a <AccountMenu> según el contexto (ícono +
+ * dropdown en escritorio, opciones planas en mobile — "poco intuitivo"
+ * como ícono chico en una pantalla táctil), algo que un único nodo
+ * reutilizado no permite.
  *
- * Logueado: el pill "Mi perfil" + botón "Salir" sueltos se reemplazaron
- * por un solo ícono con forma de persona (AccountMenu, T3.9) que agrupa
- * perfil/cronograma/cerrar sesión en un dropdown — ya no hay una opción
- * de salir suelta en el header.
+ * Logueado: el pill "Mi perfil" + botón "Salir" sueltos del escritorio se
+ * reemplazaron por un solo ícono con forma de persona (AccountMenu, T3.9)
+ * que agrupa perfil/cronograma/cerrar sesión en un dropdown — ya no hay
+ * una opción de salir suelta en el header. En mobile, ver AccountMenu
+ * variant="inline".
  */
-export async function AccountStatus() {
+export async function AccountStatus({
+  variant = "dropdown",
+}: {
+  variant?: "dropdown" | "inline";
+} = {}) {
   const session = await getSession();
 
   if (!session) {
-    return (
+    return variant === "inline" ? (
+      <Link href="/ingresar" className="tracked-caps block w-full py-2.5 text-sm font-semibold text-sand">
+        Ingresar
+      </Link>
+    ) : (
       <Link href="/ingresar" className={pillClass}>
         Ingresar
       </Link>
     );
   }
 
-  return <AccountMenu esAdmin={session.rol === "administrador"} />;
+  return <AccountMenu esAdmin={session.rol === "administrador"} variant={variant} />;
 }
 
 export function AccountStatusFallback() {

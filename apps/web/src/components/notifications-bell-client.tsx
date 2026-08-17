@@ -84,7 +84,16 @@ export function NotificationsBellClient({
       </button>
 
       {abierto && (
-        <div className="absolute right-0 top-full mt-2 w-80 max-w-[85vw] rounded-md border border-ink/10 bg-sand p-2 text-ink shadow-2xl">
+        // fixed + inset-x-4 en mobile, no absolute right-0 (bug real
+        // 2026-08-17, "aparece muy a la izquierda"): anclado al botón
+        // (cerca del borde derecho del header) y con w-80, el dropdown se
+        // extendía tanto hacia la izquierda que quedaba visualmente
+        // desbalanceado en una pantalla angosta. fixed lo posiciona
+        // relativo al VIEWPORT en vez de al botón — inset-x-4 lo centra
+        // solo, con margen parejo a los dos lados, debajo del header real
+        // (top-[var(--header-height)], la misma variable de site-header.tsx).
+        // Desde md, vuelve al comportamiento original (anclado al botón).
+        <div className="fixed inset-x-4 top-[var(--header-height)] mt-2 rounded-md border border-ink/10 bg-sand p-2 text-ink shadow-2xl md:absolute md:inset-x-auto md:top-full md:right-0 md:left-auto md:mt-2 md:w-80">
           <p className="tracked-caps px-2 py-1.5 text-[0.65rem] font-semibold text-ink-soft">
             Tus reservas
           </p>
