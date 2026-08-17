@@ -211,10 +211,12 @@ pull request) con cinco jobs:
   `apps/web/vitest.config.mts` hace fallar el comando por debajo de 80%.
 - **`deploy`**: `needs: [web, api, test-api, test-web]` — solo corre en
   un push directo a `main` (nunca en un pull_request), y solo si los
-  cuatro jobs de arriba pasaron. Dispara el Sync Hook del Blueprint de
-  Render (secret `RENDER_SYNC_HOOK_URL`, ver sección "Deploy" abajo) —
-  así el deploy a producción queda gateado por CI, no por un push
-  cualquiera.
+  cuatro jobs de arriba pasaron. Dispara el Deploy Hook de cada servicio
+  por separado (secrets `RENDER_DEPLOY_HOOK_API`/`RENDER_DEPLOY_HOOK_WEB`,
+  ver sección "Deploy" abajo y TR-044 — no el Sync Hook único del
+  Blueprint que se usó primero, dejó un caso real sin poder confirmarse
+  que forzara un redeploy real de `api`) — así el deploy a producción
+  queda gateado por CI, no por un push cualquiera.
 
 Los primeros cuatro son la Etapa 1 del pipeline ("Run tests and quality
 gates"); `deploy` es la Etapa 3 (Etapa 2, análisis estático con
@@ -271,15 +273,18 @@ sin que nadie lo vea en texto plano).
    - `turismo-marcuzzi-web`: `CONTACTO_WHATSAPP`, `CONTACTO_EMAIL` (los
      datos reales del cliente, reemplazan los placeholders de desarrollo).
 4. **Deploy automático gateado por CI** (job `deploy` en `ci.yml`, ver
-   "Integración continua" abajo): en el dashboard de Render, sección
-   **Blueprints** → tu blueprint → copiar el **Sync Hook** (sincroniza
-   `api` y `web` de una sola llamada — no el "Deploy Hook" de un
-   servicio individual, ese solo cubre uno de los dos). Cargarlo como
+   "Integración continua" abajo y TR-044): en cada servicio por
+   separado — `turismo-marcuzzi-api` → **Settings** → **Deploy Hook**,
+   copiar esa URL; repetir en `turismo-marcuzzi-web`. **No** el "Sync
+   Hook" del Blueprint completo (sección Blueprints del dashboard) —
+   se usó primero pero dejó un caso real sin poder confirmarse que
+   forzara un redeploy completo de `api` (TR-044). Cargar cada URL como
    secret del repo en GitHub: **Settings → Secrets and variables →
    Actions → pestaña "Secrets"** (no "Variables", son dos cosas
-   distintas en la misma página) → nombre exacto `RENDER_SYNC_HOOK_URL`.
-   Sin este secret, CI sigue pasando igual pero el job `deploy` falla —
-   hay que segui deployando a mano desde Render mientras tanto.
+   distintas en la misma página) → nombres exactos
+   `RENDER_DEPLOY_HOOK_API` y `RENDER_DEPLOY_HOOK_WEB`. Sin estos
+   secrets, CI sigue pasando igual pero el job `deploy` falla — hay que
+   seguir deployando a mano desde Render mientras tanto.
 5. Deploy inicial. El primer request a `/health` puede tardar (plan free
    duerme los servicios sin tráfico — cold start) — no es un error.
 

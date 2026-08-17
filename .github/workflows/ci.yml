@@ -147,47 +147,63 @@ jobs:
       - name: Test with coverage
         run: pnpm --filter @turismo-marcuzzi/web test:coverage
 
-  # Etapa 3 del pipeline (deploy) — dispara el Sync Hook del Blueprint de
-  # Render (TR-042) SOLO si los 4 jobs de arriba pasaron y SOLO en un
-  # push directo a main (nunca en un pull_request, que no debe deployar
-  # nada). `needs` es lo que gatea esto: si cualquiera de los 4 falla,
-  # este job ni arranca. RENDER_SYNC_HOOK_URL vive como secret del repo
-  # (Settings → Secrets and variables → Actions) — nunca en este archivo:
-  # cualquiera con esa URL puede disparar un deploy.
+  # Etapa 3 del pipeline (deploy) — SOLO si los 4 jobs de arriba pasaron y
+  # SOLO en un push directo a main (nunca en un pull_request). `needs` es
+  # lo que gatea esto: si cualquiera de los 4 falla, este job ni arranca.
+  #
+  # Deploy Hooks por servicio (uno para api, uno para web), no el Sync
+  # Hook del Blueprint (TR-042/TR-044): el Sync Hook quedó sin poder
+  # confirmarse que fuerce SIEMPRE un redeploy real de ambos servicios —
+  # un caso real (2026-08-17) donde `api` quedó sirviendo con el storage
+  # de fotos roto tras varias corridas de Sync exitosas según GitHub, y
+  # solo un Manual Deploy desde el dashboard lo resolvió. Un Deploy Hook
+  # por servicio es inequívoco: siempre fuerza un redeploy completo de
+  # ESE servicio puntual, sin depender de que Render decida que "no hace
+  # falta" porque no detectó cambios relevantes.
+  #
+  # RENDER_DEPLOY_HOOK_API / RENDER_DEPLOY_HOOK_WEB viven como secrets del
+  # repo (Settings → Secrets and variables → Actions) — nunca acá:
+  # cualquiera con esas URLs puede disparar un deploy.
   deploy:
     name: Deploy (Render)
     needs: [web, api, test-api, test-web]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Comprobar el secret y recortar espacios/saltos de línea
+      - name: Disparar los Deploy Hooks de Render (api + web)
         # Un secret pegado desde el navegador trae fácil un '\n' de más al
         # final (curl lo rechaza entero: "URL rejected: malformed input",
-        # confirmado en la corrida anterior) — xargs sin argumentos recorta
-        # espacio en blanco de ambos lados de forma portable. Se guarda ya
-        # limpio en $GITHUB_ENV para que el step de abajo lo use tal cual.
+        # confirmado en una corrida anterior) — xargs sin argumentos
+        # recorta espacio en blanco de ambos lados de forma portable.
+        #
+        # Sin -f en el curl: si Render devuelve un error HTTP, queremos
+        # VER el código y el cuerpo de la respuesta (no es información
+        # sensible, es la respuesta pública de la API de Render) para
+        # poder diagnosticarlo, en vez de que curl lo descarte en silencio.
         run: |
-          if [ -z "$RENDER_SYNC_HOOK_URL" ]; then
-            echo "::error::El secret RENDER_SYNC_HOOK_URL no está seteado en el repo (Settings → Secrets and variables → Actions)."
-            exit 1
-          fi
-          cleaned=$(printf '%s' "$RENDER_SYNC_HOOK_URL" | xargs)
-          echo "Secret presente (longitud original: ${#RENDER_SYNC_HOOK_URL}, recortado: ${#cleaned})."
-          echo "RENDER_SYNC_HOOK_URL_CLEAN=$cleaned" >> "$GITHUB_ENV"
+          disparar() {
+            local nombre="$1" url_raw="$2"
+            if [ -z "$url_raw" ]; then
+              echo "::error::El secret RENDER_DEPLOY_HOOK_${nombre^^} no está seteado en el repo (Settings → Secrets and variables → Actions)."
+              return 1
+            fi
+            local url
+            url=$(printf '%s' "$url_raw" | xargs)
+            echo "--- $nombre (longitud original: ${#url_raw}, recortado: ${#url}) ---"
+            local status
+            status=$(curl -sS -o response.txt -w "%{http_code}" -X POST "$url")
+            echo "HTTP status: $status"
+            echo "Respuesta:"
+            cat response.txt
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "::error::El Deploy Hook de $nombre devolvió status $status"
+              return 1
+            fi
+          }
+          fallo=0
+          disparar api "$RENDER_DEPLOY_HOOK_API" || fallo=1
+          disparar web "$RENDER_DEPLOY_HOOK_WEB" || fallo=1
+          exit $fallo
         env:
-          RENDER_SYNC_HOOK_URL: ${{ secrets.RENDER_SYNC_HOOK_URL }}
-
-      # Sin -f: si Render devuelve un error HTTP, queremos VER el código y
-      # el cuerpo de la respuesta (no es información sensible, es la
-      # respuesta pública de la API de Render) para poder diagnosticarlo,
-      # en vez de que curl lo descarte silenciosamente.
-      - name: Disparar el Sync Hook de Render
-        run: |
-          status=$(curl -sS -o response.txt -w "%{http_code}" -X POST "$RENDER_SYNC_HOOK_URL_CLEAN")
-          echo "HTTP status: $status"
-          echo "Respuesta:"
-          cat response.txt
-          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
-            echo "::error::El Sync Hook devolvió status $status"
-            exit 1
-          fi
+          RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
