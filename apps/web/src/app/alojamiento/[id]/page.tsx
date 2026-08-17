@@ -147,33 +147,33 @@ export default async function AlojamientoDetailPage(props: PageProps<"/alojamien
             </section>
           </div>
 
-          <aside className="lg:col-span-1">
+          {/* Modo editor + mobile (2026-08-17, pedido del cliente): oculto
+              entero (precio Y calendario) — sin espacio de sobra en una
+              pantalla chica, es la vista de editar datos/fotos, no de
+              reservar. Modo editor + escritorio (`lg:`, mismo breakpoint
+              donde el grid de arriba pasa a 3 columnas): vuelve a
+              mostrarse completo, como en la página normal — se había
+              sacado del todo en una ronda anterior y el cliente pidió
+              recuperarlo ahí. */}
+          <aside className={`lg:col-span-1 ${modoEditor ? "hidden lg:block" : ""}`}>
             <div className="rounded-md border border-ink/10 bg-white/60 p-6 lg:sticky lg:top-28">
               <p className="text-xl font-medium text-ink">
                 {formatARS(alojamiento.precioNoche)}
                 <span className="text-sm text-ink-soft"> /noche</span>
               </p>
-              {/* Sin calendario en modo editor (2026-08-17, pedido del
-                  cliente) — es la vista de editar datos/fotos, no de
-                  reservar (esAdmin ya bloqueaba la interacción, pero
-                  mostrarlo igual era ruido visual sin motivo mientras se
-                  edita). El precio de arriba se queda: sigue siendo
-                  contexto útil, y ya es editable desde AlojamientoForm. */}
-              {!modoEditor && (
-                <div className="mt-6">
-                  <AvailabilityCalendar
-                    alojamientoId={id}
-                    alojamientoNombre={alojamiento.nombre}
-                    ocupado={disponibilidad.ocupado}
-                    misReservasAqui={misReservasAqui}
-                    tieneReservaPendiente={tieneReservaPendiente}
-                    precioNoche={alojamiento.precioNoche}
-                    estaLogueado={Boolean(token)}
-                    contactoPrefill={usuario ? contactoPrefillDesdeUsuario(usuario) : undefined}
-                    esAdmin={esAdmin}
-                  />
-                </div>
-              )}
+              <div className="mt-6">
+                <AvailabilityCalendar
+                  alojamientoId={id}
+                  alojamientoNombre={alojamiento.nombre}
+                  ocupado={disponibilidad.ocupado}
+                  misReservasAqui={misReservasAqui}
+                  tieneReservaPendiente={tieneReservaPendiente}
+                  precioNoche={alojamiento.precioNoche}
+                  estaLogueado={Boolean(token)}
+                  contactoPrefill={usuario ? contactoPrefillDesdeUsuario(usuario) : undefined}
+                  esAdmin={esAdmin}
+                />
+              </div>
             </div>
           </aside>
         </div>

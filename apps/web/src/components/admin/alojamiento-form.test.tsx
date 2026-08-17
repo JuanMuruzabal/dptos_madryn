@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -66,11 +67,10 @@ describe("AlojamientoForm", () => {
     expect(await screen.findByText("Guardado.")).toBeInTheDocument();
   });
 
-  it("aplica el formId al <form>, para que un botón externo lo pueda enviar", () => {
-    const { container } = render(
-      <AlojamientoForm alojamiento={alojamiento()} action={action} formId="mi-form" />,
-    );
-    expect(container.querySelector("form")).toHaveAttribute("id", "mi-form");
+  it("expone el <form> real vía ref (React 19, sin forwardRef) — para requestSubmit() externo", () => {
+    const ref = createRef<HTMLFormElement>();
+    render(<AlojamientoForm alojamiento={alojamiento()} action={action} ref={ref} />);
+    expect(ref.current).toBeInstanceOf(HTMLFormElement);
   });
 
   describe("aviso de cambios sin guardar (2026-08-17, pedido del cliente)", () => {

@@ -31,16 +31,20 @@ const initialState: AdminFormState = {};
 export function AlojamientoForm({
   alojamiento,
   action,
-  formId,
+  ref,
   onDirtyChange,
   onSubmitResult,
 }: {
   alojamiento?: Alojamiento;
   action: (prevState: AdminFormState, formData: FormData) => Promise<AdminFormState>;
-  /** id del <form> real — deja que un botón AFUERA del form lo dispare
-   * (atributo HTML `form="..."`, sin JS de por medio) desde el modal de
-   * "cambios sin guardar" de ModoEditor (2026-08-17, pedido del cliente). */
-  formId?: string;
+  /** Ref al <form> real (React 19, ref como prop normal — sin forwardRef)
+   * — deja que ModoEditor dispare el envío desde el modal de "cambios sin
+   * guardar" con formRef.current?.requestSubmit(), sin depender del
+   * atributo HTML form="..." (bug real 2026-08-17: un botón afuera del
+   * form, dentro del portal del Modal — createPortal a document.body —
+   * asociado por form="..." no disparaba la acción de forma confiable;
+   * requestSubmit() en el nodo real del <form> sí). */
+  ref?: React.Ref<HTMLFormElement>;
   /** Avisa al padre (ModoEditor) cada vez que hay un cambio sin enviar
    * todavía, para la advertencia al salir sin guardar. */
   onDirtyChange?: (dirty: boolean) => void;
@@ -64,7 +68,7 @@ export function AlojamientoForm({
 
   return (
     <form
-      id={formId}
+      ref={ref}
       action={formAction}
       onChange={() => onDirtyChange?.(true)}
       className="max-w-xl space-y-5"
