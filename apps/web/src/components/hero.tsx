@@ -60,7 +60,11 @@ export function Hero({ scenes }: { scenes: SceneData[] }) {
         <p className="tracked-caps mb-4 text-xs font-semibold text-sand/80">
           Puerto Madryn, Chubut — 42°46′S 65°02′O
         </p>
-        <h1 className="font-display max-w-3xl text-5xl uppercase tracking-wide text-sand sm:text-6xl md:text-7xl">
+        {/* text-4xl en mobile, no text-5xl (bug real 2026-08-17, "las letras
+            no entran"): en mayúsculas + tracking-wide, "ALOJAMIENTOS" solo
+            ya se acercaba al ancho disponible en un teléfono angosto
+            (~327px) a text-5xl — a text-4xl entra con margen. */}
+        <h1 className="font-display max-w-3xl text-4xl uppercase tracking-wide text-sand sm:text-6xl md:text-7xl">
           Alojamientos Madryn
         </h1>
         <p className="mt-6 max-w-xl text-base text-sand/90 md:text-lg">
@@ -83,30 +87,39 @@ export function Hero({ scenes }: { scenes: SceneData[] }) {
             Conocer más
           </Link>
         </div>
-      </div>
 
-      <div className="absolute bottom-8 right-6 z-10 flex items-center gap-3 md:right-10">
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={scene.place}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="tracked-caps text-right text-[0.65rem] text-sand/70"
-          >
-            {scene.place} — {scene.caption}
-          </motion.span>
-        </AnimatePresence>
-        <div className="flex gap-1.5" role="presentation">
-          {scenes.map((s, i) => (
-            <span
-              key={s.place}
-              className={`h-1 w-5 rounded-full transition-colors duration-300 ${
-                i === index ? "bg-sand" : "bg-sand/30"
-              }`}
-            />
-          ))}
+        {/* Leyenda + indicadores de escena: en mobile, en flujo normal
+            (centrado) debajo de los botones — antes `absolute bottom-8
+            right-6` en TODOS los anchos (bug real 2026-08-17, "muy pegada a
+            los botones, no centrada"): en una pantalla angosta esa esquina
+            queda cerca de donde terminan los botones si estos wrappean a
+            dos líneas. Desde md, vuelve al posicionamiento absoluto
+            original (esquina inferior derecha del bloque de texto — este
+            div ya es `relative`, así que `md:right-0 md:bottom-0` ancla
+            en el mismo lugar que antes). */}
+        <div className="mt-8 flex items-center justify-center gap-3 md:absolute md:right-0 md:bottom-0 md:mt-0 md:justify-end">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={scene.place}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="tracked-caps text-center text-[0.65rem] text-sand/70 md:text-right"
+            >
+              {scene.place} — {scene.caption}
+            </motion.span>
+          </AnimatePresence>
+          <div className="flex gap-1.5" role="presentation">
+            {scenes.map((s, i) => (
+              <span
+                key={s.place}
+                className={`h-1 w-5 rounded-full transition-colors duration-300 ${
+                  i === index ? "bg-sand" : "bg-sand/30"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>
