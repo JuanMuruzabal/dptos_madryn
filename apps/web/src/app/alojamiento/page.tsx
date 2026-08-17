@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 // T4.13 — el cliente no la quería acá, ver TR-027).
 export default function AlojamientoPage(props: PageProps<"/alojamiento">) {
   return (
-    <main className="flex-1 bg-sand pt-32 pb-24">
+    <main className="flex-1 bg-sand pt-[var(--header-height)] pb-24">
       <div className="mx-auto max-w-(--container-max) px-6 md:px-10">
         <p className="tracked-caps mb-3 text-xs font-semibold text-ink-soft">Alojamiento</p>
         <h1 className="font-display max-w-2xl text-4xl md:text-5xl">

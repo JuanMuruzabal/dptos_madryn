@@ -14,7 +14,7 @@ interface AuthShellProps {
  * rápido de completar. */
 export function AuthShell({ eyebrow, title, subtitle, children, footer }: AuthShellProps) {
   return (
-    <main className="flex flex-1 items-center justify-center bg-sand px-6 pt-32 pb-20">
+    <main className="flex flex-1 items-center justify-center bg-sand px-6 pt-[var(--header-height)] pb-20">
       <div className="w-full max-w-sm">
         <p className="tracked-caps mb-3 text-center text-xs font-semibold text-ink-soft">
           {eyebrow}

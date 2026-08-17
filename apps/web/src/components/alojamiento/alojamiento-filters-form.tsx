@@ -14,11 +14,15 @@ import { authInputClass, authLabelClass } from "@/components/auth/auth-shell";
 export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltros }) {
   const hayFiltros = Object.keys(filtros).length > 0;
 
+  // grid-cols-1 en mobile (no grid-cols-2, bug real 2026-08-17): con 2
+  // columnas, cada <input type="date"> nativo quedaba con ~160px de ancho
+  // en un teléfono común — no le alcanza al selector nativo del
+  // navegador, se recorta/superpone contra la celda de al lado.
   return (
     <form
       action="/alojamiento"
       method="get"
-      className="grid grid-cols-2 gap-4 rounded-md border border-ink/10 bg-white/60 p-5 sm:grid-cols-4 sm:items-end"
+      className="grid grid-cols-1 gap-4 rounded-md border border-ink/10 bg-white/60 p-5 sm:grid-cols-4 sm:items-end"
     >
       <div>
         <label htmlFor="fecha_inicio" className={authLabelClass}>
