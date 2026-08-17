@@ -6,38 +6,58 @@ import { useEffect, useRef, useState } from "react";
 import { Calendar, LogOut, Settings, User } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 
-/**
- * Opciones del dropdown de escritorio (variant="dropdown"). El mobile
- * (variant="inline") dejó de compartir este componente el 2026-08-17 —
- * ahora tiene su propio diseño (íconos, ruta activa, línea divisoria), ver
- * CuentaInline más abajo.
- */
-function Opciones({
-  esAdmin,
-  itemClass,
-  logoutClass,
-  onNavigate,
-}: {
-  esAdmin: boolean;
-  itemClass: string;
-  logoutClass: string;
-  onNavigate?: () => void;
-}) {
+// Recuadro redondeado (2026-08-17, pedido del cliente: "en pc cambie el
+// formato del panel de control por el mas reciente... lo mismo que los
+// campos cuando uno toca el icono de usuario, quiero que el estilo sea
+// similar al reciente aplicado en mobile") — mismos colores que AdminNav
+// (admin-nav.tsx): activo = verde petróleo relleno + texto crema, inactivo
+// = blanco con borde tenue + texto gris oscuro. Pensado para el fondo
+// claro del dropdown (bg-sand), a diferencia de CuentaInline (fondo
+// oscuro del drawer mobile) — mismo lenguaje visual (recuadro + ícono +
+// ruta activa marcada), colores adaptados al contexto claro.
+const DROPDOWN_ACTIVE = "bg-[#193b44] text-[#f5f1e8]";
+const DROPDOWN_INACTIVE = "border border-[rgba(0,0,0,0.1)] bg-white text-[#3a5259] hover:bg-black/[0.03]";
+const dropdownItemClass = (activo: boolean) =>
+  `flex items-center gap-2.5 rounded-[12px] px-3.5 py-2.5 text-left text-sm font-medium transition-colors ${
+    activo ? DROPDOWN_ACTIVE : DROPDOWN_INACTIVE
+  }`;
+// Cerrar sesión queda con su propio recuadro (mismo shape, no es una ruta
+// así que nunca usa el fondo "activo") — mismo criterio que en
+// CuentaInline: acción de bajo peso, aparte de la navegación.
+const dropdownLogoutClass =
+  "flex items-center gap-2.5 rounded-[12px] border border-[rgba(0,0,0,0.1)] bg-white px-3.5 py-2.5 text-left text-sm font-medium text-coral-dark transition-colors hover:bg-black/[0.03]";
+
+/** Rutas + íconos compartidos entre el dropdown de escritorio y el bloque
+ * de cuenta del drawer mobile (CuentaInline) — mismas 2 rutas, mismos
+ * íconos, cada uno con su propia clase de color adaptada a su fondo. */
+const CUENTA_LINKS = [
+  { href: "/perfil", label: "Mi perfil", Icon: User },
+  { href: "/cronograma", label: "Mi cronograma", Icon: Calendar },
+] as const;
+
+/** Opciones del dropdown de escritorio (variant="dropdown"). El mobile
+ * (variant="inline") tiene su propio componente, CuentaInline más abajo —
+ * mismas rutas/íconos, colores distintos por el fondo oscuro del drawer. */
+function Opciones({ esAdmin, onNavigate }: { esAdmin: boolean; onNavigate: () => void }) {
+  const pathname = usePathname();
+
   return (
     <>
-      <Link href="/perfil" onClick={onNavigate} className={itemClass}>
-        Mi perfil
-      </Link>
-      <Link href="/cronograma" onClick={onNavigate} className={itemClass}>
-        Mi cronograma
-      </Link>
+      {CUENTA_LINKS.map(({ href, label, Icon }) => (
+        <Link key={href} href={href} onClick={onNavigate} className={dropdownItemClass(pathname === href)}>
+          <Icon size={16} strokeWidth={1.75} aria-hidden />
+          {label}
+        </Link>
+      ))}
       {esAdmin && (
-        <Link href="/admin" onClick={onNavigate} className={itemClass}>
+        <Link href="/admin" onClick={onNavigate} className={dropdownItemClass(pathname === "/admin")}>
+          <Settings size={16} strokeWidth={1.75} aria-hidden />
           Panel admin
         </Link>
       )}
       <form action={logoutAction} className="w-full">
-        <button type="submit" className={logoutClass}>
+        <button type="submit" className={`w-full ${dropdownLogoutClass}`}>
+          <LogOut size={16} strokeWidth={1.75} aria-hidden />
           Cerrar sesión
         </button>
       </form>
@@ -45,12 +65,7 @@ function Opciones({
   );
 }
 
-const dropdownItemClass =
-  "block w-full rounded-md px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5";
-const dropdownLogoutClass = `${dropdownItemClass} text-coral-dark`;
-
-// Rediseño del bloque de cuenta SOLO para variant="inline" (2026-08-17,
-// pedido del cliente — el dropdown de escritorio no se toca). Colores
+// Rediseño del bloque de cuenta para variant="inline" (2026-08-17). Colores
 // puntuales de este pedido, no los tokens del sitio (--color-coral es
 // #e2725b, --color-tide es #1f7a8c — distintos a propósito, el cliente dio
 // hex concretos para este menú): coral e07a5f (barra activa + fondo al
@@ -73,11 +88,6 @@ const cuentaItemClass = (activo: boolean) =>
   `flex items-center gap-3 border-l-[3px] py-2.5 pr-6 pl-[21px] text-base ${CUENTA_TEXT} transition-colors ${
     activo ? `${CUENTA_ACTIVE_BORDER} ${CUENTA_ACTIVE_BG} font-semibold` : "border-transparent"
   }`;
-
-const CUENTA_LINKS = [
-  { href: "/perfil", label: "Mi perfil", Icon: User },
-  { href: "/cronograma", label: "Mi cronograma", Icon: Calendar },
-] as const;
 
 /** Bloque de cuenta del drawer mobile: separado del resto con una línea
  * tenue (sin rótulo encima, sacado 2026-08-17 a pedido del cliente — "Mi
@@ -191,13 +201,8 @@ export function AccountMenu({
       </button>
 
       {abierto && (
-        <div className="absolute right-0 top-full mt-2 w-52 rounded-md border border-ink/10 bg-sand p-1.5 text-ink shadow-2xl">
-          <Opciones
-            esAdmin={esAdmin}
-            itemClass={dropdownItemClass}
-            logoutClass={dropdownLogoutClass}
-            onNavigate={() => setAbierto(false)}
-          />
+        <div className="absolute right-0 top-full mt-2 flex w-56 flex-col gap-1.5 rounded-md border border-ink/10 bg-sand p-2 text-ink shadow-2xl">
+          <Opciones esAdmin={esAdmin} onNavigate={() => setAbierto(false)} />
         </div>
       )}
     </div>

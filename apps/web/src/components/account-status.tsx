@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogIn } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { AccountMenu } from "@/components/account-menu";
 
@@ -36,18 +37,22 @@ export async function AccountStatus({
 
   if (!session) {
     return variant === "inline" ? (
-      // Centrado + mismo pill que escritorio (2026-08-17, pedido del
-      // cliente: "arregla el boton de Ingresar ya que no queda centrado
-      // con las demas opciones y que tenga el mismo estilo que tiene en
-      // la pagina web de PC") — antes era un link de texto plano alineado
-      // a la izquierda como el resto de la lista, pero un pill no lee
-      // bien ahí (no es una opción más de la lista, es la única acción
-      // posible sin sesión), por eso centrado en vez de seguir el mismo
-      // esquema de sangría de las demás.
-      <div className="flex justify-center px-6 py-2">
-        <Link href="/ingresar" className={pillClass}>
-          Ingresar
-        </Link>
+      // Mismo recuadro delineado y misma ubicación que "Cerrar sesión"
+      // logueado (2026-08-17, pedido del cliente: "mismo estilo misma
+      // ubicacion... pero que diga ingresar y de un color mas
+      // anaranjado") — antes era un pill centrado, dos rondas atrás un
+      // link de texto plano; naranja (#e67e22) en vez del coral de Cerrar
+      // sesión para distinguir "entrar" de "salir" a simple vista.
+      <div className="mt-2 w-full border-t border-sand/15 pt-3">
+        <div className="mx-6">
+          <Link
+            href="/ingresar"
+            className="flex items-center gap-3 rounded-[12px] border border-[rgba(230,126,34,0.45)] px-[14px] py-[13px] text-sm font-normal text-[#e67e22] transition-colors"
+          >
+            <LogIn size={16} strokeWidth={1.75} aria-hidden />
+            Ingresar
+          </Link>
+        </div>
       </div>
     ) : (
       <Link href="/ingresar" className={pillClass}>

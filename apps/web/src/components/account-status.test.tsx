@@ -23,16 +23,15 @@ describe("AccountStatus", () => {
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar");
   });
 
-  it("sin sesión, variant inline muestra Ingresar centrado con el mismo pill de escritorio", async () => {
+  it("sin sesión, variant inline muestra Ingresar como recuadro delineado naranja", async () => {
     getSession.mockResolvedValue(null);
     render((await AccountStatus({ variant: "inline" })) as React.ReactElement);
     const link = screen.getByRole("link", { name: "Ingresar" });
     expect(link).toHaveAttribute("href", "/ingresar");
-    // Mismo pillClass que la variante dropdown (2026-08-17).
-    expect(link.className).toContain("rounded-full");
-    expect(link.className).toContain("bg-coral");
-    // Centrado por el wrapper, no estirado a lo ancho como antes.
-    expect(link.parentElement?.className).toContain("justify-center");
+    // Mismo recuadro que "Cerrar sesión" logueado (2026-08-17), en naranja.
+    expect(link.className).toContain("rounded-[12px]");
+    expect(link.className).toContain("border-[rgba(230,126,34,0.45)]");
+    expect(link.className).toContain("text-[#e67e22]");
   });
 
   it("con sesión de cliente, renderiza AccountMenu sin admin, variant dropdown por defecto", async () => {

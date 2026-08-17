@@ -73,6 +73,40 @@ describe("AccountMenu", () => {
     expect(boton).toHaveAttribute("aria-expanded", "true");
   });
 
+  describe("recuadros del dropdown (2026-08-17, mismo estilo que el panel admin/mobile)", () => {
+    it("cada opción tiene su ícono", () => {
+      render(<AccountMenu esAdmin />);
+      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
+      for (const nombre of ["Mi perfil", "Mi cronograma", "Panel admin", "Cerrar sesión"]) {
+        const el = screen.getByText(nombre).closest("a, button");
+        expect(el?.querySelector("svg")).toBeInTheDocument();
+      }
+    });
+
+    it("marca la ruta activa con fondo verde petróleo y texto crema", () => {
+      usePathname.mockReturnValue("/cronograma");
+      render(<AccountMenu />);
+      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
+
+      const activo = screen.getByRole("link", { name: "Mi cronograma" });
+      expect(activo.className).toContain("bg-[#193b44]");
+      expect(activo.className).toContain("text-[#f5f1e8]");
+
+      const inactivo = screen.getByRole("link", { name: "Mi perfil" });
+      expect(inactivo.className).toContain("bg-white");
+      expect(inactivo.className).not.toContain("bg-[#193b44]");
+    });
+
+    it("Cerrar sesión nunca se marca como activo", () => {
+      usePathname.mockReturnValue("/perfil");
+      render(<AccountMenu />);
+      fireEvent.click(screen.getByRole("button", { name: /mi cuenta/i }));
+      expect(screen.getByRole("button", { name: "Cerrar sesión" }).className).not.toContain(
+        "bg-[#193b44]",
+      );
+    });
+  });
+
   describe("variant inline (menú mobile, 2026-08-17)", () => {
     it("muestra las opciones directo, sin botón ni toggle", () => {
       render(<AccountMenu variant="inline" />);
