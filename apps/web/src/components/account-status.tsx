@@ -36,9 +36,19 @@ export async function AccountStatus({
 
   if (!session) {
     return variant === "inline" ? (
-      <Link href="/ingresar" className="tracked-caps block w-full py-2.5 text-sm font-semibold text-sand">
-        Ingresar
-      </Link>
+      // Centrado + mismo pill que escritorio (2026-08-17, pedido del
+      // cliente: "arregla el boton de Ingresar ya que no queda centrado
+      // con las demas opciones y que tenga el mismo estilo que tiene en
+      // la pagina web de PC") — antes era un link de texto plano alineado
+      // a la izquierda como el resto de la lista, pero un pill no lee
+      // bien ahí (no es una opción más de la lista, es la única acción
+      // posible sin sesión), por eso centrado en vez de seguir el mismo
+      // esquema de sangría de las demás.
+      <div className="flex justify-center px-6 py-2">
+        <Link href="/ingresar" className={pillClass}>
+          Ingresar
+        </Link>
+      </div>
     ) : (
       <Link href="/ingresar" className={pillClass}>
         Ingresar

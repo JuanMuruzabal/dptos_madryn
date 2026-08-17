@@ -92,9 +92,27 @@ describe("AccountMenu", () => {
       expect(screen.getByText("Panel admin")).toBeInTheDocument();
     });
 
-    it("muestra el rótulo 'Mi cuenta' separando el bloque del resto", () => {
+    it("ya no muestra el rótulo 'Mi cuenta' (sacado 2026-08-17), solo la línea divisoria", () => {
+      const { container } = render(<AccountMenu variant="inline" />);
+      expect(screen.queryByText("Mi cuenta")).not.toBeInTheDocument();
+      expect(container.querySelector(".border-t")).toBeInTheDocument();
+    });
+
+    it("Mi perfil/Mi cronograma/Panel admin en blanco suave, con el ícono en su propio gris azulado", () => {
+      render(<AccountMenu variant="inline" esAdmin />);
+      for (const nombre of ["Mi perfil", "Mi cronograma", "Panel admin"]) {
+        const link = screen.getByRole("link", { name: nombre });
+        expect(link.className).toContain("text-[#eef2f2]");
+        expect(link.querySelector("svg")).toHaveClass("text-[#8fb0b7]");
+      }
+    });
+
+    it("Cerrar sesión tiene su propio recuadro delineado en coral", () => {
       render(<AccountMenu variant="inline" />);
-      expect(screen.getByText("Mi cuenta")).toBeInTheDocument();
+      const logout = screen.getByRole("button", { name: "Cerrar sesión" });
+      expect(logout.className).toContain("rounded-[12px]");
+      expect(logout.className).toContain("border-[rgba(224,122,95,0.45)]");
+      expect(logout.className).toContain("text-[#e8917a]");
     });
 
     it("marca con la barra coral la opción que coincide con la ruta actual", () => {

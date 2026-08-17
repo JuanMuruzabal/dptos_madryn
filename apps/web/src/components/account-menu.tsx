@@ -9,8 +9,8 @@ import { logoutAction } from "@/app/actions/auth";
 /**
  * Opciones del dropdown de escritorio (variant="dropdown"). El mobile
  * (variant="inline") dejó de compartir este componente el 2026-08-17 —
- * ahora tiene su propio diseño (íconos, ruta activa, rótulo "Mi cuenta"),
- * ver CuentaInline más abajo.
+ * ahora tiene su propio diseño (íconos, ruta activa, línea divisoria), ver
+ * CuentaInline más abajo.
  */
 function Opciones({
   esAdmin,
@@ -54,15 +54,23 @@ const dropdownLogoutClass = `${dropdownItemClass} text-coral-dark`;
 // puntuales de este pedido, no los tokens del sitio (--color-coral es
 // #e2725b, --color-tide es #1f7a8c — distintos a propósito, el cliente dio
 // hex concretos para este menú): coral e07a5f (barra activa + fondo al
-// 16%), rótulo "Mi cuenta" en el gris azulado 6b8f97.
+// 16%).
 const CUENTA_ACTIVE_BORDER = "border-[#e07a5f]";
 const CUENTA_ACTIVE_BG = "bg-[rgba(224,122,95,0.16)]";
+// Segunda ronda (2026-08-17): texto de Mi perfil/Mi cronograma/Panel admin
+// en blanco suave (antes un celeste, #9db8bd al ojo del cliente) para que
+// queden igual que los ítems del menú principal; el ícono se queda en su
+// propio gris azulado en vez de heredar el color del texto (por eso va
+// SEPARADO del texto acá, no basta con currentColor: los dos ya no
+// comparten color).
+const CUENTA_TEXT = "text-[#eef2f2]";
+const CUENTA_ICON = "text-[#8fb0b7]";
 // pl-[21px] (no pl-3): mismo esquema de sangría que los links de arriba en
 // site-header.tsx (border-l-[3px] + pl-[21px] = 24px hasta el ícono/texto,
 // igual que su pl-6 menos esos 3px) — así toda la lista del drawer queda
 // alineada en una sola columna, sección de cuenta incluida.
 const cuentaItemClass = (activo: boolean) =>
-  `flex items-center gap-3 border-l-[3px] py-2.5 pr-6 pl-[21px] text-base text-tide transition-colors ${
+  `flex items-center gap-3 border-l-[3px] py-2.5 pr-6 pl-[21px] text-base ${CUENTA_TEXT} transition-colors ${
     activo ? `${CUENTA_ACTIVE_BORDER} ${CUENTA_ACTIVE_BG} font-semibold` : "border-transparent"
   }`;
 
@@ -71,36 +79,40 @@ const CUENTA_LINKS = [
   { href: "/cronograma", label: "Mi cronograma", Icon: Calendar },
 ] as const;
 
-/** Bloque "Mi cuenta" del drawer mobile: separado del resto con una línea
- * tenue + rótulo, cada opción con ícono (lucide-react) y la ruta activa
- * marcada con una barra coral a la izquierda — Cerrar sesión queda aparte,
- * en el mismo coral pero como acción de bajo peso (no es una ruta, no se
- * "marca" como activa). */
+/** Bloque de cuenta del drawer mobile: separado del resto con una línea
+ * tenue (sin rótulo encima, sacado 2026-08-17 a pedido del cliente — "Mi
+ * cuenta" quedó redundante), cada opción con ícono (lucide-react) y la
+ * ruta activa marcada con una barra coral a la izquierda — Cerrar sesión
+ * queda aparte, en su propio recuadro delineado (2026-08-17), no es una
+ * ruta así que nunca se marca "activa". */
 function CuentaInline({ esAdmin }: { esAdmin: boolean }) {
   const pathname = usePathname();
 
   return (
-    <div className="mt-2 w-full">
-      <div className="flex items-center gap-2 border-t border-sand/15 px-6 pt-4 pb-1">
-        <span className="tracked-caps text-[0.65rem] font-semibold text-[#6b8f97]">Mi cuenta</span>
-      </div>
+    <div className="mt-2 w-full border-t border-sand/15 pt-3">
       <div className="flex flex-col gap-1">
         {CUENTA_LINKS.map(({ href, label, Icon }) => (
           <Link key={href} href={href} className={cuentaItemClass(pathname === href)}>
-            <Icon size={18} strokeWidth={1.75} aria-hidden />
+            <Icon size={18} strokeWidth={1.75} aria-hidden className={CUENTA_ICON} />
             {label}
           </Link>
         ))}
         {esAdmin && (
           <Link href="/admin" className={cuentaItemClass(pathname === "/admin")}>
-            <Settings size={18} strokeWidth={1.75} aria-hidden />
+            <Settings size={18} strokeWidth={1.75} aria-hidden className={CUENTA_ICON} />
             Panel admin
           </Link>
         )}
-        <form action={logoutAction} className="w-full">
+        {/* Recuadro delineado (2026-08-17, pedido del cliente) — borde de
+            1px en vez del border-l-[3px] que usan las demás opciones (ese
+            esquema era para la barra de "activo", acá no aplica: es una
+            acción, no una ruta). mx-6 en el <form> para que el botón quede
+            a la misma distancia del borde del drawer que el resto de la
+            sección (24px, igual que el pl-[21px]+border-l-[3px] de arriba). */}
+        <form action={logoutAction} className="mx-6 mt-2 w-auto">
           <button
             type="submit"
-            className="flex w-full items-center gap-3 border-l-[3px] border-transparent py-2 pr-6 pl-[21px] text-sm font-normal text-[#e07a5f]/80 transition-opacity hover:text-[#e07a5f]"
+            className="flex items-center gap-3 rounded-[12px] border border-[rgba(224,122,95,0.45)] px-[14px] py-[13px] text-sm font-normal text-[#e8917a] transition-colors"
           >
             <LogOut size={16} strokeWidth={1.75} aria-hidden />
             Cerrar sesión
@@ -124,9 +136,9 @@ function CuentaInline({ esAdmin }: { esAdmin: boolean }) {
  * las mismas opciones se listan PLANAS — sin toggle, sin problema de
  * posicionamiento posible porque no hay nada que posicionar. Rediseñada
  * de nuevo el mismo día (ver CuentaInline arriba): ícono por opción,
- * ruta activa marcada, separada del resto con su propio rótulo "Mi
- * cuenta". El header de escritorio sigue usando la variante "dropdown"
- * (default) sin cambios.
+ * ruta activa marcada, separada del resto con una línea divisoria. El
+ * header de escritorio sigue usando la variante "dropdown" (default) sin
+ * cambios.
  */
 export function AccountMenu({
   esAdmin = false,
