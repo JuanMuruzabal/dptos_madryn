@@ -167,6 +167,11 @@ export interface Slot {
  * público necesita. */
 export interface Resena {
   id: string;
+  /** Para que el frontend decida si mostrar el botón de borrar en ESA
+   * reseña puntual (2026-08-17) — comparar contra el id del usuario
+   * logueado. El backend nunca confía en esto para autorizar el borrado
+   * en sí (DELETE /resenas/{id} vuelve a exigir ser el dueño). */
+  usuarioId: string;
   usuarioNombre: string;
   rating: number; // 1-5
   texto: string;

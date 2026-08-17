@@ -4,7 +4,8 @@ const getSessionToken = vi.fn();
 vi.mock("@/lib/session", () => ({ getSessionToken }));
 
 const crearResena = vi.fn();
-vi.mock("@/lib/api", () => ({ crearResena }));
+const borrarResena = vi.fn();
+vi.mock("@/lib/api", () => ({ crearResena, borrarResena }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -77,5 +78,22 @@ describe("crearResenaAction", () => {
     );
     expect(resultado).toEqual({ success: true });
     expect(crearResena).toHaveBeenCalledWith("token", "a-1", 5, "Bien");
+  });
+});
+
+describe("borrarResenaAction", () => {
+  it("sin token, no llama a la API", async () => {
+    getSessionToken.mockResolvedValue(null);
+    const { borrarResenaAction } = await import("./resenas");
+    await borrarResenaAction("r-1", "a-1");
+    expect(borrarResena).not.toHaveBeenCalled();
+  });
+
+  it("con token, borra y usa el id y el alojamientoId correctos", async () => {
+    getSessionToken.mockResolvedValue("token");
+    borrarResena.mockResolvedValue({ ok: true, data: undefined });
+    const { borrarResenaAction } = await import("./resenas");
+    await borrarResenaAction("r-1", "a-1");
+    expect(borrarResena).toHaveBeenCalledWith("token", "r-1");
   });
 });

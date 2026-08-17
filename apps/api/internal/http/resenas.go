@@ -22,6 +22,11 @@ func registerResenaRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string) {
 
 	r.Get("/alojamientos/{id}/resenas", h.list)
 	r.With(requireAuth(jwtSecret)).Post("/alojamientos/{id}/resenas", h.create)
+	// Borrado real por su dueño (2026-08-17, pedido del cliente) — a
+	// diferencia de moderar (admin, oculta sin borrar), esto SÍ borra la
+	// fila; el handler exige que sea el propio autor, cualquier usuario
+	// autenticado puede pegarle a esta ruta pero solo borra lo suyo.
+	r.With(requireAuth(jwtSecret)).Delete("/resenas/{id}", h.delete)
 
 	// T4.5: moderación — solo admin, ve TODAS las reseñas (ocultas
 	// incluidas) y puede alternar el flag.
@@ -37,7 +42,12 @@ type resenaHandler struct {
 }
 
 type resenaResponse struct {
-	ID            string `json:"id"`
+	ID string `json:"id"`
+	// UsuarioID (2026-08-17): el frontend lo compara contra el usuario
+	// logueado para decidir si mostrar el botón de borrar en ESA reseña
+	// puntual — nunca se usa para autorizar nada del lado del servidor,
+	// eso lo hace delete() de nuevo, sin confiar en lo que mande el cliente.
+	UsuarioID     string `json:"usuarioId"`
 	UsuarioNombre string `json:"usuarioNombre"`
 	Rating        int    `json:"rating"`
 	Texto         string `json:"texto"`
@@ -51,6 +61,7 @@ type resenaResponse struct {
 func toResenaResponse(res db.Resena) resenaResponse {
 	out := resenaResponse{
 		ID:            res.ID.String(),
+		UsuarioID:     res.UsuarioID.String(),
 		UsuarioNombre: res.Usuario.Nombre,
 		Rating:        res.Rating,
 		Texto:         res.Texto,
@@ -133,6 +144,44 @@ func (h *resenaHandler) moderar(w http.ResponseWriter, r *http.Request) {
 	res := h.db.Model(&db.Resena{}).Where("id = ?", id).Update("oculta", req.Oculta)
 	if res.Error != nil {
 		writeError(w, http.StatusInternalServerError, "error actualizando la reseña")
+		return
+	}
+	if res.RowsAffected == 0 {
+		writeError(w, http.StatusNotFound, "reseña no encontrada")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// delete — DELETE /resenas/{id}, autenticado (2026-08-17, pedido del
+// cliente: "que el cliente a las reseñas las pueda eliminar si quiere").
+// Borrado real, no un soft-delete como moderar() — el WHERE incluye
+// usuario_id, así que un usuario nunca puede borrar la reseña de otro ni
+// aunque adivine el id: si no es el dueño, RowsAffected da 0 y responde
+// 404 en vez de 403 (no hace falta distinguir "no existe" de "no es tuya"
+// frente al cliente, y no filtra si el id pertenece a otra persona).
+func (h *resenaHandler) delete(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "falta el token de autenticación")
+		return
+	}
+	usuarioID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "token inválido")
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "id inválido")
+		return
+	}
+
+	res := h.db.Where("id = ? AND usuario_id = ?", id, usuarioID).Delete(&db.Resena{})
+	if res.Error != nil {
+		writeError(w, http.StatusInternalServerError, "error borrando la reseña")
 		return
 	}
 	if res.RowsAffected == 0 {

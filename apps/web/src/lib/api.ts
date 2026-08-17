@@ -213,6 +213,15 @@ export async function crearResena(
   });
 }
 
+/** DELETE /resenas/{id} (2026-08-17, pedido del cliente: "que el cliente a
+ * las reseñas las pueda eliminar si quiere") — el backend exige que el
+ * usuario del token sea el dueño de la reseña, acá no se duplica ese
+ * chequeo (ver resenas-list.tsx: el botón de borrar ya solo se muestra en
+ * las reseñas propias, esto es la segunda barrera del lado del servidor). */
+export async function borrarResena(token: string, id: string): Promise<ApiResult<undefined>> {
+  return requestAuthed<undefined>(`/resenas/${id}`, token, "DELETE");
+}
+
 /** GET /me/alojamiento-vigente (T4.6, FR-11) — bool liviano para el banner
  * condicional de la home, en vez de traer /me/reservas completo y
  * recalcularlo en el frontend. `false` ante cualquier error de red: es la

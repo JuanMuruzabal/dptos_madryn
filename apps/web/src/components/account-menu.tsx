@@ -47,8 +47,23 @@ function Opciones({
 const dropdownItemClass =
   "block w-full rounded-md px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5";
 const dropdownLogoutClass = `${dropdownItemClass} text-coral-dark`;
-const inlineItemClass = "block w-full py-2.5 text-left";
-const inlineLogoutClass = `${inlineItemClass} text-coral`;
+// Sin tracked-caps (2026-08-17, pedido del cliente: "quitar las mayúsculas
+// de mi perfil, mi cronograma y panel admin") y en tide (el turquesa que ya
+// usa el sitio para links, spec de paleta en globals.css) en vez de
+// text-sand — pedido explícito de "que en la version mobil estos apartados
+// aparezcan en un color azulado". Este cambio es puntual a esta lista, NO
+// una baja general de tracked-caps/font-mono en el resto del sitio (eso
+// reabriría TR-012/TR-023, sigue pendiente de confirmar con el cliente).
+//
+// El color va SEPARADO del resto (no concatenado en una sola clase base):
+// dos utilities de Tailwind para la misma propiedad (text-tide y
+// text-coral) en el mismo string no se pisan de forma predecible por
+// orden de aparición ahí, sino por el orden en que Tailwind las emite en
+// la hoja de estilos — practicidad aparte, para no arriesgarse, el ítem
+// base no trae color y cada variante (normal/logout) pone el suyo.
+const inlineItemBaseClass = "block w-full py-2.5 text-left text-base font-semibold";
+const inlineItemClass = `${inlineItemBaseClass} text-tide`;
+const inlineLogoutClass = `${inlineItemBaseClass} text-coral`;
 
 /**
  * Ícono de cuenta con forma de persona (T3.9) — reemplaza el pill "Mi
@@ -89,7 +104,7 @@ export function AccountMenu({
 
   if (variant === "inline") {
     return (
-      <div className="tracked-caps flex w-full flex-col items-start gap-2.5 text-sm font-semibold text-sand">
+      <div className="flex w-full flex-col items-start gap-2.5">
         <Opciones esAdmin={esAdmin} itemClass={inlineItemClass} logoutClass={inlineLogoutClass} />
       </div>
     );

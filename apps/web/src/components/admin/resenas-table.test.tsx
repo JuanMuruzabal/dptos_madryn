@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 function resena(overrides: Partial<Resena> = {}): Resena {
   return {
     id: "res-1",
+    usuarioId: "u-1",
     usuarioNombre: "María Gómez",
     rating: 4,
     texto: "Muy buena estadía, todo impecable.",

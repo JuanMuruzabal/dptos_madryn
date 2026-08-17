@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { crearResena } from "@/lib/api";
+import { borrarResena, crearResena } from "@/lib/api";
 import { getSessionToken } from "@/lib/session";
 
 export interface ResenaFormState {
@@ -42,4 +42,20 @@ export async function crearResenaAction(
   revalidatePath("/alojamiento");
 
   return { success: true };
+}
+
+/**
+ * Borra una reseña propia (2026-08-17, pedido del cliente: "que el cliente
+ * a las reseñas las pueda eliminar si quiere"). El backend vuelve a exigir
+ * ser el dueño (DELETE /resenas/{id} en apps/api/internal/http/resenas.go)
+ * — acá no se repite ese chequeo, solo se ignora silenciosamente si por
+ * algún motivo ya no aplica (p. ej. doble click borrándola dos veces),
+ * mismo criterio que darDeBajaAlojamientoAction en actions/admin.ts.
+ */
+export async function borrarResenaAction(id: string, alojamientoId: string): Promise<void> {
+  const token = await getSessionToken();
+  if (!token) return;
+  await borrarResena(token, id);
+  revalidatePath(`/alojamiento/${alojamientoId}`);
+  revalidatePath("/alojamiento");
 }
