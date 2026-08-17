@@ -35,6 +35,15 @@ apps/api/uploads/
 *.env
 apps/api/.env.test
 
+# --- Notas operativas con secrets reales (connection strings, tokens,
+# credenciales de servicios de producción) — nunca al repo, sea cual sea
+# el nombre que se le ponga al archivo. Ver docs/tradeoffs.md TR-042
+# sobre por qué los secrets de Render/R2 solo viven en sus dashboards. ---
+docs/*connection*
+docs/*credential*
+docs/*secret*
+docs/*.local.md
+
 # --- Claude Code: settings.local.json y el lock de tareas programadas
 # son estado local de esta máquina/sesión, no configuración de equipo
 # (a diferencia de un futuro .claude/settings.json compartido, que si
