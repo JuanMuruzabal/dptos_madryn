@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AccountMenu } from "./account-menu";
+
+const { usePathname } = vi.hoisted(() => ({ usePathname: vi.fn(() => "/") }));
+vi.mock("next/navigation", () => ({ usePathname }));
+
+afterEach(() => {
+  vi.clearAllMocks();
+  usePathname.mockReturnValue("/");
+});
 
 describe("AccountMenu", () => {
   it("el dropdown arranca cerrado", () => {
@@ -82,6 +90,39 @@ describe("AccountMenu", () => {
     it("muestra 'Panel admin' cuando esAdmin es true", () => {
       render(<AccountMenu variant="inline" esAdmin />);
       expect(screen.getByText("Panel admin")).toBeInTheDocument();
+    });
+
+    it("muestra el rótulo 'Mi cuenta' separando el bloque del resto", () => {
+      render(<AccountMenu variant="inline" />);
+      expect(screen.getByText("Mi cuenta")).toBeInTheDocument();
+    });
+
+    it("marca con la barra coral la opción que coincide con la ruta actual", () => {
+      usePathname.mockReturnValue("/cronograma");
+      render(<AccountMenu variant="inline" />);
+
+      const activo = screen.getByRole("link", { name: "Mi cronograma" });
+      expect(activo.className).toContain("border-[#e07a5f]");
+      expect(activo.className).toContain("bg-[rgba(224,122,95,0.16)]");
+
+      const inactivo = screen.getByRole("link", { name: "Mi perfil" });
+      expect(inactivo.className).toContain("border-transparent");
+      expect(inactivo.className).not.toContain("border-[#e07a5f]");
+    });
+
+    it("ninguna opción se marca activa si la ruta no coincide con ninguna", () => {
+      usePathname.mockReturnValue("/alojamiento");
+      render(<AccountMenu variant="inline" esAdmin />);
+      for (const nombre of ["Mi perfil", "Mi cronograma", "Panel admin"]) {
+        expect(screen.getByRole("link", { name: nombre }).className).toContain("border-transparent");
+      }
+    });
+
+    it("Cerrar sesión nunca se marca como activo, aunque no es una ruta", () => {
+      usePathname.mockReturnValue("/perfil");
+      render(<AccountMenu variant="inline" />);
+      const logout = screen.getByRole("button", { name: "Cerrar sesión" });
+      expect(logout.className).not.toContain("border-[#e07a5f]");
     });
   });
 });

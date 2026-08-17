@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Calendar, LogOut, Settings, User } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 
 /**
- * Mismas opciones para las dos variantes de abajo (dropdown/inline) — un
- * solo lugar para no desincronizarlas si se agrega/saca una opción.
- * `itemClass` la pasa cada variante: el dropdown vive sobre fondo claro
- * (`bg-sand`), la lista plana vive sobre el fondo oscuro del menú mobile
- * (`bg-ink`) — mismo layout, texto/hover distintos por contexto.
+ * Opciones del dropdown de escritorio (variant="dropdown"). El mobile
+ * (variant="inline") dejó de compartir este componente el 2026-08-17 —
+ * ahora tiene su propio diseño (íconos, ruta activa, rótulo "Mi cuenta"),
+ * ver CuentaInline más abajo.
  */
 function Opciones({
   esAdmin,
@@ -47,23 +48,68 @@ function Opciones({
 const dropdownItemClass =
   "block w-full rounded-md px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5";
 const dropdownLogoutClass = `${dropdownItemClass} text-coral-dark`;
-// Sin tracked-caps (2026-08-17, pedido del cliente: "quitar las mayúsculas
-// de mi perfil, mi cronograma y panel admin") y en tide (el turquesa que ya
-// usa el sitio para links, spec de paleta en globals.css) en vez de
-// text-sand — pedido explícito de "que en la version mobil estos apartados
-// aparezcan en un color azulado". Este cambio es puntual a esta lista, NO
-// una baja general de tracked-caps/font-mono en el resto del sitio (eso
-// reabriría TR-012/TR-023, sigue pendiente de confirmar con el cliente).
-//
-// El color va SEPARADO del resto (no concatenado en una sola clase base):
-// dos utilities de Tailwind para la misma propiedad (text-tide y
-// text-coral) en el mismo string no se pisan de forma predecible por
-// orden de aparición ahí, sino por el orden en que Tailwind las emite en
-// la hoja de estilos — practicidad aparte, para no arriesgarse, el ítem
-// base no trae color y cada variante (normal/logout) pone el suyo.
-const inlineItemBaseClass = "block w-full py-2.5 text-left text-base font-semibold";
-const inlineItemClass = `${inlineItemBaseClass} text-tide`;
-const inlineLogoutClass = `${inlineItemBaseClass} text-coral`;
+
+// Rediseño del bloque de cuenta SOLO para variant="inline" (2026-08-17,
+// pedido del cliente — el dropdown de escritorio no se toca). Colores
+// puntuales de este pedido, no los tokens del sitio (--color-coral es
+// #e2725b, --color-tide es #1f7a8c — distintos a propósito, el cliente dio
+// hex concretos para este menú): coral e07a5f (barra activa + fondo al
+// 16%), rótulo "Mi cuenta" en el gris azulado 6b8f97.
+const CUENTA_ACTIVE_BORDER = "border-[#e07a5f]";
+const CUENTA_ACTIVE_BG = "bg-[rgba(224,122,95,0.16)]";
+// pl-[21px] (no pl-3): mismo esquema de sangría que los links de arriba en
+// site-header.tsx (border-l-[3px] + pl-[21px] = 24px hasta el ícono/texto,
+// igual que su pl-6 menos esos 3px) — así toda la lista del drawer queda
+// alineada en una sola columna, sección de cuenta incluida.
+const cuentaItemClass = (activo: boolean) =>
+  `flex items-center gap-3 border-l-[3px] py-2.5 pr-6 pl-[21px] text-base text-tide transition-colors ${
+    activo ? `${CUENTA_ACTIVE_BORDER} ${CUENTA_ACTIVE_BG} font-semibold` : "border-transparent"
+  }`;
+
+const CUENTA_LINKS = [
+  { href: "/perfil", label: "Mi perfil", Icon: User },
+  { href: "/cronograma", label: "Mi cronograma", Icon: Calendar },
+] as const;
+
+/** Bloque "Mi cuenta" del drawer mobile: separado del resto con una línea
+ * tenue + rótulo, cada opción con ícono (lucide-react) y la ruta activa
+ * marcada con una barra coral a la izquierda — Cerrar sesión queda aparte,
+ * en el mismo coral pero como acción de bajo peso (no es una ruta, no se
+ * "marca" como activa). */
+function CuentaInline({ esAdmin }: { esAdmin: boolean }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="mt-2 w-full">
+      <div className="flex items-center gap-2 border-t border-sand/15 px-6 pt-4 pb-1">
+        <span className="tracked-caps text-[0.65rem] font-semibold text-[#6b8f97]">Mi cuenta</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        {CUENTA_LINKS.map(({ href, label, Icon }) => (
+          <Link key={href} href={href} className={cuentaItemClass(pathname === href)}>
+            <Icon size={18} strokeWidth={1.75} aria-hidden />
+            {label}
+          </Link>
+        ))}
+        {esAdmin && (
+          <Link href="/admin" className={cuentaItemClass(pathname === "/admin")}>
+            <Settings size={18} strokeWidth={1.75} aria-hidden />
+            Panel admin
+          </Link>
+        )}
+        <form action={logoutAction} className="w-full">
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 border-l-[3px] border-transparent py-2 pr-6 pl-[21px] text-sm font-normal text-[#e07a5f]/80 transition-opacity hover:text-[#e07a5f]"
+          >
+            <LogOut size={16} strokeWidth={1.75} aria-hidden />
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Ícono de cuenta con forma de persona (T3.9) — reemplaza el pill "Mi
@@ -75,11 +121,12 @@ const inlineLogoutClass = `${inlineItemBaseClass} text-coral`;
  * de site-header.tsx, en vez de un ícono chico + dropdown ("poco
  * intuitivo" en una pantalla táctil, y el dropdown posicionado con
  * `right-0` relativo a su botón asume un botón cerca del borde derecho),
- * las mismas opciones se listan PLANAS, con el mismo estilo que el resto
- * de los links de navegación del menú — sin ícono, sin toggle, sin
- * problema de posicionamiento posible porque no hay nada que posicionar.
- * El header de escritorio sigue usando la variante "dropdown" (default)
- * sin cambios.
+ * las mismas opciones se listan PLANAS — sin toggle, sin problema de
+ * posicionamiento posible porque no hay nada que posicionar. Rediseñada
+ * de nuevo el mismo día (ver CuentaInline arriba): ícono por opción,
+ * ruta activa marcada, separada del resto con su propio rótulo "Mi
+ * cuenta". El header de escritorio sigue usando la variante "dropdown"
+ * (default) sin cambios.
  */
 export function AccountMenu({
   esAdmin = false,
@@ -103,11 +150,7 @@ export function AccountMenu({
   }, [variant]);
 
   if (variant === "inline") {
-    return (
-      <div className="flex w-full flex-col items-start gap-2.5">
-        <Opciones esAdmin={esAdmin} itemClass={inlineItemClass} logoutClass={inlineLogoutClass} />
-      </div>
-    );
+    return <CuentaInline esAdmin={esAdmin} />;
   }
 
   return (

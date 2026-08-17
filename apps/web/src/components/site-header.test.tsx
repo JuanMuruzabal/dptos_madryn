@@ -112,6 +112,37 @@ describe("SiteHeader", () => {
     expect(screen.getByText("cuenta-mobile")).toBeInTheDocument();
   });
 
+  it("el menú mobile usa capitalización de oración, distinta del nav de escritorio", () => {
+    usePathname.mockReturnValue("/");
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
+    // Desktop: "Servicio Turístico" (tracked-caps la muestra en mayúsculas
+    // igual, pero el texto de origen no cambia).
+    expect(screen.getByRole("link", { name: "Servicio Turístico" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    // Mobile: "Servicio turístico" (mobileLabel, 2026-08-17).
+    expect(screen.getByRole("link", { name: "Servicio turístico" })).toBeInTheDocument();
+  });
+
+  it("marca con la barra coral el link del menú mobile que coincide con la ruta actual", () => {
+    usePathname.mockReturnValue("/experiencias");
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+
+    // El nav de escritorio (hidden md:flex) sigue en el DOM en jsdom, así
+    // que hay 2 links con el mismo nombre — el último es el del drawer
+    // mobile (mismo criterio que "clickear un link del menú mobile...").
+    const activoLinks = screen.getAllByRole("link", { name: "Experiencias" });
+    const activo = activoLinks[activoLinks.length - 1];
+    expect(activo.className).toContain("border-[#e07a5f]");
+    expect(activo.className).toContain("bg-[rgba(224,122,95,0.16)]");
+
+    const inactivoLinks = screen.getAllByRole("link", { name: "Traslados" });
+    const inactivo = inactivoLinks[inactivoLinks.length - 1];
+    expect(inactivo.className).toContain("border-transparent");
+    expect(inactivo.className).not.toContain("border-[#e07a5f]");
+  });
+
   it("con el menú cerrado, muestra el bannerSlot; abierto, lo oculta", () => {
     usePathname.mockReturnValue("/");
     render(

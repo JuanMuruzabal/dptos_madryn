@@ -3,13 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Bed, Car, Compass, Mail, Map } from "lucide-react";
 
 const NAV_LINKS = [
-  { href: "/alojamiento", label: "Alojamiento" },
-  { href: "/experiencias", label: "Experiencias" },
-  { href: "/servicio-turistico", label: "Servicio Turístico" },
-  { href: "/traslados", label: "Traslados" },
-  { href: "#contacto", label: "Contacto" },
+  { href: "/alojamiento", label: "Alojamiento", mobileLabel: "Alojamiento", Icon: Bed },
+  { href: "/experiencias", label: "Experiencias", mobileLabel: "Experiencias", Icon: Compass },
+  {
+    href: "/servicio-turistico",
+    label: "Servicio Turístico",
+    // mobileLabel en capitalización de oración (2026-08-17, pedido del
+    // cliente) — distinto de `label` (desktop, tracked-caps ya lo pasa a
+    // mayúsculas visualmente, así que ahí el casing de origen no importa).
+    mobileLabel: "Servicio turístico",
+    Icon: Map,
+  },
+  { href: "/traslados", label: "Traslados", mobileLabel: "Traslados", Icon: Car },
+  { href: "#contacto", label: "Contacto", mobileLabel: "Contacto", Icon: Mail },
 ];
 
 /**
@@ -187,29 +196,44 @@ export function SiteHeader({
       {menuOpen && (
         <nav
           id="mobile-nav"
-          className="tracked-caps flex flex-col items-start gap-2.5 border-t border-sand/15 px-6 py-8 text-sm font-semibold text-sand md:hidden"
+          className="flex flex-col gap-1 border-t border-sand/15 py-6 text-sm text-sand md:hidden"
         >
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={closeMenu}
-              className="block w-full py-2.5"
-            >
-              {link.label}
-            </Link>
-          ))}
-          {/* accountSlotMobile (2026-08-17, pedido del cliente): opciones
-              planas (Mi perfil/Mi cronograma/Panel admin/Cerrar sesión),
-              no el ícono+dropdown de escritorio — ver account-menu.tsx. Ya
-              no hace falta alinearlo a la derecha (ese ajuste era para que
-              el dropdown de AccountMenu no se abriera fuera de pantalla;
-              sin dropdown acá, el problema no existe), vuelve a heredar
-              items-start como el resto del nav. El separador visual queda
-              igual. */}
-          <div className="mt-3 w-full border-t border-sand/15 pt-4">
-            {accountSlotMobile}
-          </div>
+          {/* Sin tracked-caps acá (2026-08-17, pedido del cliente: "se ve
+              muy IA") — capitalización de oración (mobileLabel) + ícono
+              por opción (lucide-react) en vez de mayúsculas trackeadas en
+              mono. El nav de escritorio de arriba no se toca, sigue con
+              tracked-caps + link.label (TR-012/TR-023 siguen vigentes ahí).
+              border-l-[3px] siempre reservado (transparente si no está
+              activo) para que el ícono/texto no salte de lugar al navegar;
+              pl-[21px] = px-6 (24px) menos esos 3px, así el contenido
+              queda alineado igual que antes de agregar el borde. */}
+          {NAV_LINKS.map((link) => {
+            const activo = pathname === link.href;
+            const Icon = link.Icon;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={closeMenu}
+                className={`flex items-center gap-3 border-l-[3px] py-2.5 pr-6 pl-[21px] transition-colors ${
+                  activo
+                    ? "border-[#e07a5f] bg-[rgba(224,122,95,0.16)] font-semibold"
+                    : "border-transparent"
+                }`}
+              >
+                <Icon size={18} strokeWidth={1.75} aria-hidden />
+                {link.mobileLabel}
+              </Link>
+            );
+          })}
+          {/* accountSlotMobile (2026-08-17): Mi perfil/Mi cronograma/Panel
+              admin/Cerrar sesión — CuentaInline (account-menu.tsx) arma su
+              propio separador + rótulo "Mi cuenta" y usa el mismo esquema
+              de sangría (border-l-[3px] + pl-[21px]) que los links de
+              arriba, así que este wrapper va SIN padding propio — si le
+              agregara px-6 acá, los íconos de esta sección quedarían más
+              adentro que los de Alojamiento/Experiencias/etc. */}
+          <div className="w-full">{accountSlotMobile}</div>
         </nav>
       )}
     </header>
