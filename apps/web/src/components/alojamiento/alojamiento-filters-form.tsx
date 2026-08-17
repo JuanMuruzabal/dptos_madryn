@@ -34,7 +34,21 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
           del ancho intrínseco de su contenido — un <input type="date">
           nativo tiene uno bastante grande en algunos navegadores mobile,
           así que se salía de su celda aunque el input en sí tuviera
-          w-full. */}
+          w-full.
+          Bug real 2026-08-17 #3, seguía sobresaliendo con lo de arriba: el
+          min-w-0 estaba solo en el <div> contenedor, no en el <input> en
+          sí. El widget nativo de type="date" (el ícono de calendario +
+          los 3 segmentos día/mes/año) tiene, en varios navegadores mobile,
+          un ancho de contenido mínimo intrínseco que gana por sobre
+          `width: 100%` si el propio input no tiene min-width:0 puesto
+          (mismo motivo por el que hace falta min-w-0 en un hijo de grid/
+          flex, pero acá aplica al elemento mismo, no solo al contenedor).
+          max-w-full es el mismo respaldo que se usa en <img>/<iframe>
+          responsive: junto con width:100%, evita que el ancho intrínseco
+          del widget nativo empuje más allá del 100% del padre. box-border
+          deja explícito box-sizing:border-box en el input puntual (ya lo
+          da Preflight de Tailwind global, pero así no depende de que
+          nada lo pise). */}
       <div className="min-w-0">
         <label htmlFor="fecha_inicio" className={authLabelClass}>
           Check-in
@@ -44,7 +58,7 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
           id="fecha_inicio"
           name="fecha_inicio"
           defaultValue={filtros.fechaInicio}
-          className={authInputClass}
+          className={`${authInputClass} box-border min-w-0 max-w-full`}
         />
       </div>
       <div className="min-w-0">
@@ -56,7 +70,7 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
           id="fecha_fin"
           name="fecha_fin"
           defaultValue={filtros.fechaFin}
-          className={authInputClass}
+          className={`${authInputClass} box-border min-w-0 max-w-full`}
         />
       </div>
       <div className="min-w-0">
