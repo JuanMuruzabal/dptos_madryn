@@ -31,7 +31,16 @@ export async function SiteFooter() {
 
         <div className="horizon-rule my-10" />
 
-        <div className="grid grid-cols-2 gap-10 sm:grid-cols-4">
+        {/* sm:grid-cols-3 (no 4), y Contacto sin col-span en desktop (bug
+            real 2026-08-17, "el footer está muy tirado hacia la
+            izquierda"): con 4 columnas y Contacto ocupando 2, quedaban dos
+            columnas angostas de links apilados (densas) a la izquierda y
+            un bloque ancho con poco texto (mucho aire) a la derecha — se
+            veía desbalanceado aunque el contenedor en sí esté centrado.
+            Tres columnas parejas (Servicios/Cuenta/Contacto) resuelve la
+            asimetría. En mobile sigue en 2 columnas con Contacto abajo
+            ocupando el ancho completo. */}
+        <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className="tracked-caps mb-4 text-xs font-semibold text-ink-soft">
@@ -49,7 +58,7 @@ export async function SiteFooter() {
             </div>
           ))}
 
-          <div className="col-span-2 sm:col-span-2">
+          <div className="col-span-2 sm:col-span-1">
             <p className="tracked-caps mb-4 text-xs font-semibold text-ink-soft">
               Contacto
             </p>

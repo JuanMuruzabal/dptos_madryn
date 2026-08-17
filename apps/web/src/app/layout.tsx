@@ -54,9 +54,19 @@ export const metadata: Metadata = {
 // prerenderizable — ver next.config.ts (cacheComponents) y T5.1 en
 // docs/implementation-plan.md.
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Dos instancias, no una reutilizada en dos posiciones (2026-08-17,
+  // pedido del cliente): el panel mobile necesita accountStatus en su
+  // variante "inline" (opciones planas, sin ícono+dropdown — ver
+  // account-status.tsx/account-menu.tsx), distinta de la variante
+  // "dropdown" del pill de escritorio.
   const accountSlot = (
     <Suspense fallback={<AccountStatusFallback />}>
       <AccountStatus />
+    </Suspense>
+  );
+  const accountSlotMobile = (
+    <Suspense fallback={<AccountStatusFallback />}>
+      <AccountStatus variant="inline" />
     </Suspense>
   );
 
@@ -98,6 +108,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-sand text-ink">
         <SiteHeader
           accountSlot={accountSlot}
+          accountSlotMobile={accountSlotMobile}
           bannerSlot={bannerSlot}
           notificationsSlot={notificationsSlot}
         />

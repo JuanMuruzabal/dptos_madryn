@@ -20,19 +20,19 @@ afterEach(() => {
 describe("SiteHeader", () => {
   it("fuera de la home, arranca sólido aunque no se haya scrolleado", () => {
     usePathname.mockReturnValue("/alojamiento");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     expect(screen.getByRole("banner").className).toContain("bg-ink");
   });
 
   it("en la home sin scrollear, arranca transparente", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     expect(screen.getByRole("banner").className).toContain("bg-transparent");
   });
 
   it("en la home, scrollear pasa el header a sólido", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     setScrollY(100);
     fireEvent.scroll(window);
     expect(screen.getByRole("banner").className).toContain("bg-ink");
@@ -40,7 +40,7 @@ describe("SiteHeader", () => {
 
   it("renderiza los links de navegación principales", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     expect(screen.getByRole("link", { name: "Experiencias" })).toHaveAttribute("href", "/experiencias");
     expect(screen.getByRole("link", { name: "Traslados" })).toHaveAttribute("href", "/traslados");
   });
@@ -48,7 +48,7 @@ describe("SiteHeader", () => {
   it("abre y cierra el menú mobile", () => {
     usePathname.mockReturnValue("/");
     const { container } = render(
-      <SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />,
+      <SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />,
     );
     const toggle = screen.getByRole("button", { name: "Abrir menú" });
     fireEvent.click(toggle);
@@ -61,14 +61,14 @@ describe("SiteHeader", () => {
 
   it("el menú mobile abierto fuerza el estado sólido", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
     expect(screen.getByRole("banner").className).toContain("bg-ink");
   });
 
   it("clickear un link del menú mobile lo cierra", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
     const mobileLinks = screen.getAllByRole("link", { name: "Experiencias" });
     fireEvent.click(mobileLinks[mobileLinks.length - 1]);
@@ -77,28 +77,51 @@ describe("SiteHeader", () => {
 
   it("clickear el logo cierra el menú mobile", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={null} notificationsSlot={null} />);
+    render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
     fireEvent.click(screen.getByRole("link", { name: "ALOJAMIENTOS MADRYN" }));
     expect(screen.getByRole("button", { name: "Abrir menú" })).toBeInTheDocument();
   });
 
-  it("renderiza accountSlot y notificationsSlot recibidos", () => {
+  it("renderiza accountSlot (desktop) y notificationsSlot recibidos", () => {
     usePathname.mockReturnValue("/");
     render(
       <SiteHeader
         accountSlot={<span>cuenta</span>}
+        accountSlotMobile={<span>cuenta-mobile</span>}
         bannerSlot={<span>banner</span>}
         notificationsSlot={<span>notif</span>}
       />,
     );
-    expect(screen.getAllByText("cuenta").length).toBeGreaterThan(0);
+    expect(screen.getByText("cuenta")).toBeInTheDocument();
     expect(screen.getByText("notif")).toBeInTheDocument();
+  });
+
+  it("el menú mobile usa accountSlotMobile, no accountSlot", () => {
+    usePathname.mockReturnValue("/");
+    render(
+      <SiteHeader
+        accountSlot={<span>cuenta-desktop</span>}
+        accountSlotMobile={<span>cuenta-mobile</span>}
+        bannerSlot={null}
+        notificationsSlot={null}
+      />,
+    );
+    expect(screen.queryByText("cuenta-mobile")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    expect(screen.getByText("cuenta-mobile")).toBeInTheDocument();
   });
 
   it("con el menú cerrado, muestra el bannerSlot; abierto, lo oculta", () => {
     usePathname.mockReturnValue("/");
-    render(<SiteHeader accountSlot={null} bannerSlot={<span>banner</span>} notificationsSlot={null} />);
+    render(
+      <SiteHeader
+        accountSlot={null}
+        accountSlotMobile={null}
+        bannerSlot={<span>banner</span>}
+        notificationsSlot={null}
+      />,
+    );
     expect(screen.getByText("banner")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
     expect(screen.queryByText("banner")).not.toBeInTheDocument();

@@ -18,11 +18,16 @@ export function AlojamientoFiltersForm({ filtros }: { filtros: AlojamientoFiltro
   // columnas, cada <input type="date"> nativo quedaba con ~160px de ancho
   // en un teléfono común — no le alcanza al selector nativo del
   // navegador, se recorta/superpone contra la celda de al lado.
+  // sm:grid-cols-2 lg:grid-cols-4 (no directo a 4 desde sm, bug real
+  // 2026-08-17 #2: seguía sobresaliendo) — el input de fecha nativo
+  // también queda apretado en el rango de tablet/pantalla mediana
+  // (~640-1024px) con 4 columnas fijas; recién a partir de lg (1024px)
+  // hay ancho de sobra por columna para las 4 juntas.
   return (
     <form
       action="/alojamiento"
       method="get"
-      className="grid grid-cols-1 gap-4 rounded-md border border-ink/10 bg-white/60 p-5 sm:grid-cols-4 sm:items-end"
+      className="grid grid-cols-1 gap-4 rounded-md border border-ink/10 bg-white/60 p-5 sm:grid-cols-2 sm:items-end lg:grid-cols-4"
     >
       {/* min-w-0 en los 3 campos (bug real 2026-08-17, "el input sobresale
           de la caja"): sin esto, un item de grid no se achica por debajo
