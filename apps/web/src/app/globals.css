@@ -91,6 +91,31 @@
     font-family: var(--font-body);
     overflow-x: hidden;
   }
+
+  /* Bug real 2026-08-17, 4to intento: los inputs de Check-in/Check-out
+   * (alojamiento-filters-form.tsx) seguían sobresaliendo de su tarjeta en
+   * mobile incluso con width:100%/max-width:100%/min-width:0/box-border
+   * puestos directo en el <input> (3er intento). Se confirmó con el HTML
+   * servido en producción que esas clases SÍ estaban aplicadas — el
+   * problema nunca fue el box model del <input> en sí.
+   *
+   * La causa real: Chrome (desktop y Android) renderiza el valor de
+   * input[type="date"] dentro de una shadow part interna,
+   * ::-webkit-date-and-time-value, que trae su propio min-width de la
+   * hoja de estilos del navegador — vive DENTRO del control nativo, así
+   * que ningún width/max-width/min-width puesto sobre el <input> mismo
+   * lo toca (por eso todo lo intentado antes en el <input> no podía
+   * funcionar). Es la causa documentada del bug clásico "input date
+   * desborda su contenedor en Chrome mobile" — el fix es apuntarle a esa
+   * shadow part directamente. */
+  input[type="date"] {
+    box-sizing: border-box;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
 }
 
 @layer components {
