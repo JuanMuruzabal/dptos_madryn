@@ -91,6 +91,15 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Bug real (2026-08-18, ver el comentario en apps/web/Dockerfile):
+      # las NEXT_PUBLIC_* necesitan existir en el momento del BUILD, no
+      # solo en el `environment:` del contenedor ya corriendo — sin esto,
+      # `docker compose up --build` siempre compilaba con los fallbacks
+      # hardcodeados, ignorando cualquier valor real puesto en el .env de
+      # la raíz.
+      args:
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-1x00000000000000000000AA}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     container_name: turismo-marcuzzi-web
     restart: unless-stopped
     environment:

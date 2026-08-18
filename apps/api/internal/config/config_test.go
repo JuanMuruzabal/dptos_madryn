@@ -198,3 +198,28 @@ func TestGetEnv_VariableVaciaUsaElDefault(t *testing.T) {
 		t.Errorf("Port = %q, esperaba el default %q porque PORT está vacío", cfg.Port, "8080")
 	}
 }
+
+// Regresión de un bug real en producción (2026-08-18): una API key de
+// Resend pegada en el dashboard de Render con un salto de línea de más
+// al final rompía net/http con "invalid header field value" al armar el
+// header Authorization — getEnv tiene que recortar esos espacios/saltos
+// de línea invisibles, no devolverlos tal cual.
+func TestGetEnv_RecortaEspaciosYSaltosDeLineaDeSobra(t *testing.T) {
+	t.Setenv("JWT_SECRET", "  mi-secret-con-espacios\n")
+
+	cfg := Load()
+	if cfg.JWTSecret != "mi-secret-con-espacios" {
+		t.Errorf("JWTSecret = %q, esperaba que se recortaran los espacios/saltos de línea", cfg.JWTSecret)
+	}
+}
+
+// Un valor que es SOLO espacios/saltos de línea (sin contenido real)
+// tiene que tratarse como "no seteada" — mismo criterio que una vacía.
+func TestGetEnv_VariableSoloConEspaciosUsaElDefault(t *testing.T) {
+	t.Setenv("PORT", "   \n")
+
+	cfg := Load()
+	if cfg.Port != "8080" {
+		t.Errorf("Port = %q, esperaba el default %q porque PORT es solo espacios", cfg.Port, "8080")
+	}
+}

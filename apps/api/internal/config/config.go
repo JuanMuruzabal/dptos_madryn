@@ -90,9 +90,19 @@ func Load() Config {
 	}
 }
 
+// Bug real en producción (2026-08-18): una API key de Resend pegada en el
+// dashboard de Render con un salto de línea de más al final rompía
+// net/http con "invalid header field value for Authorization" — un
+// espacio/salto de línea invisible es un error humano fácil de cometer al
+// copiar cualquier secret desde cualquier lado. strings.TrimSpace acá,
+// una sola vez en el punto de entrada de TODAS las variables de entorno,
+// es más robusto que confiar en que cada lugar que arma un header/URL/etc.
+// se acuerde de limpiar el valor por su cuenta.
 func getEnv(key, fallback string) string {
-	if v, ok := os.LookupEnv(key); ok && v != "" {
-		return v
+	if v, ok := os.LookupEnv(key); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			return trimmed
+		}
 	}
 	return fallback
 }

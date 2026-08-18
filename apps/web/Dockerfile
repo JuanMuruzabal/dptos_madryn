@@ -26,6 +26,22 @@ WORKDIR /repo
 COPY --from=deps /repo ./
 COPY apps/web apps/web
 COPY packages/shared-types packages/shared-types
+# Bug real detectado 2026-08-18: las NEXT_PUBLIC_* tienen que existir
+# como env var EN EL MOMENTO del build (`next build` las inlinea en el
+# JS del cliente) — una variable cargada solo en el dashboard de Render
+# (entorno del CONTENEDOR YA CORRIENDO) nunca llega a este paso, así que
+# hasta ahora siempre se compilaba con el fallback hardcodeado de cada
+# una (p. ej. NEXT_PUBLIC_TURNSTILE_SITE_KEY siempre caía en la site key
+# de PRUEBA, aunque se cargara una real en Render — pasaba desapercibido
+# porque esa siempre "funciona" mostrando el cartel de modo test; con
+# NEXT_PUBLIC_GOOGLE_CLIENT_ID, sin fallback posible, el botón quedaba
+# deshabilitado siempre). Render pasa las env vars del dashboard como
+# --build-arg automáticamente cuando el Dockerfile declara un ARG con
+# el mismo nombre — de ahí este bloque.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 RUN pnpm --filter @turismo-marcuzzi/web build
 
 # --- runtime: solo lo que server.js standalone necesita para correr ---
