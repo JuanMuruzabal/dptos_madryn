@@ -20,7 +20,17 @@ vi.mock("next/script", () => ({
   },
 }));
 
-const render_ = vi.fn(() => "widget-1");
+type RenderOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  "expired-callback"?: () => void;
+  "error-callback"?: () => void;
+};
+
+// Firma tipada explícitamente (no vi.fn(() => "widget-1")) a propósito:
+// sin ella, TS infiere las llamadas grabadas como una tupla de longitud 0
+// y render_.mock.calls[0][1] deja de tipar como los "options" reales.
+const render_ = vi.fn<(container: HTMLElement, options: RenderOptions) => string>(() => "widget-1");
 const remove = vi.fn();
 
 beforeEach(() => {
@@ -59,7 +69,9 @@ describe("TurnstileWidget", () => {
     await waitFor(() => expect(render_).toHaveBeenCalledTimes(1));
 
     const options = render_.mock.calls[0][1];
-    options["expired-callback"]();
+    // Non-null: el componente real siempre pasa expired-callback, el tipo
+    // lo marca opcional solo porque la API de Cloudflare lo permite.
+    options["expired-callback"]!();
 
     expect(onToken).toHaveBeenCalledWith("");
   });
@@ -70,7 +82,9 @@ describe("TurnstileWidget", () => {
     await waitFor(() => expect(render_).toHaveBeenCalledTimes(1));
 
     const options = render_.mock.calls[0][1];
-    options["error-callback"]();
+    // Non-null: el componente real siempre pasa error-callback, el tipo lo
+    // marca opcional solo porque la API de Cloudflare lo permite.
+    options["error-callback"]!();
 
     expect(onToken).toHaveBeenCalledWith("");
   });
