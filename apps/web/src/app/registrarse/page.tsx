@@ -16,7 +16,9 @@ export default async function RegistrarsePage() {
   return (
     <AuthShell
       title="Crear cuenta"
+      subtitle="Sumate en un minuto."
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
+      maxWidthClassName="max-w-sm lg:max-w-xl"
       footer={
         <>
           ¿Ya tenés cuenta?{" "}

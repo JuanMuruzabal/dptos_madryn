@@ -1,15 +1,8 @@
 "use client";
 
 import { useActionState, useState, type FormEvent } from "react";
-import { Lock, Mail, Phone, User } from "lucide-react";
 import { registerAction, type AuthFormState } from "@/app/actions/auth";
-import {
-  AuthField,
-  authFieldIconClass,
-  authFieldWrapClass,
-  authInputClass,
-  authSubmitClass,
-} from "@/components/auth/auth-shell";
+import { AuthField, authInputClassNoIcon, authSubmitClass } from "@/components/auth/auth-shell";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
@@ -71,6 +64,16 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x0000
  * (evitar un typo antes de mandar el form) — no viajan al backend; si no
  * coinciden entre sí, el propio registerAction los vuelve a chequear como
  * defensa en profundidad, no solo acá.
+ *
+ * Sin íconos en los campos (2026-08-18, pedido del cliente: "quitar los
+ * emojis o los símbolos") — AuthField sin `icon` cae a
+ * authInputClassNoIcon. Email+Confirmar email y Contraseña+Confirmar
+ * contraseña se emparejan en 2 columnas recién desde lg: (pedido del
+ * cliente: "en la página de escritorio puede ensanchar el register...
+ * pero solo en la página de escritorio") — la tarjeta se ensancha en la
+ * misma pantalla vía AuthShell.maxWidthClassName (ver registrarse/
+ * page.tsx). Nombre+Apellido siguen emparejados desde antes, desde sm:
+ * (tablet), sin cambios.
  */
 export function RegisterForm() {
   const [state, action, pending] = useActionState(registerAction, initialState);
@@ -142,7 +145,6 @@ export function RegisterForm() {
             name="nombre"
             label="Nombre"
             labelClassName={compactLabelClass}
-            icon={<User size={16} />}
             type="text"
             autoComplete="given-name"
             placeholder="Tu nombre"
@@ -154,7 +156,6 @@ export function RegisterForm() {
             name="apellido"
             label="Apellido"
             labelClassName={compactLabelClass}
-            icon={<User size={16} />}
             type="text"
             autoComplete="family-name"
             placeholder="Tu apellido"
@@ -162,37 +163,41 @@ export function RegisterForm() {
           />
         </div>
 
-        <AuthField
-          id="email"
-          name="email"
-          label="Email"
-          labelClassName={compactLabelClass}
-          icon={<Mail size={16} />}
-          type="email"
-          autoComplete="email"
-          placeholder="Escribí tu email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        {/* Emparejados recién desde lg: (2026-08-18, "solo en la página de
+            escritorio") — en mobile/tablet siguen apilados uno debajo del
+            otro, igual que antes de este pedido. */}
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-4">
+          <AuthField
+            id="email"
+            name="email"
+            label="Email"
+            labelClassName={compactLabelClass}
+            type="email"
+            autoComplete="email"
+            placeholder="Escribí tu email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <AuthField
-          id="confirmarEmail"
-          name="confirmarEmail"
-          label="Confirmar email"
-          labelClassName={compactLabelClass}
-          icon={<Mail size={16} />}
-          type="email"
-          autoComplete="email"
-          placeholder="Repetí tu email"
-          required
-          value={confirmarEmail}
-          onChange={(e) => setConfirmarEmail(e.target.value)}
-        />
+          <AuthField
+            id="confirmarEmail"
+            name="confirmarEmail"
+            label="Confirmar email"
+            labelClassName={compactLabelClass}
+            type="email"
+            autoComplete="email"
+            placeholder="Repetí tu email"
+            required
+            value={confirmarEmail}
+            onChange={(e) => setConfirmarEmail(e.target.value)}
+          />
+        </div>
 
         {/* Teléfono: código de país + número, opcional (2026-08-18, pedido
             del cliente) — se unen en formato internacional recién en
-            registerAction (ver comentario del componente, arriba). */}
+            registerAction (ver comentario del componente, arriba). Ancho
+            completo siempre, no tiene un campo par para compartir fila. */}
         <div>
           <label htmlFor="telefonoNumero" className={compactLabelClass}>
             Teléfono
@@ -211,55 +216,50 @@ export function RegisterForm() {
                 </option>
               ))}
             </select>
-            <div className={`${authFieldWrapClass} flex-1`}>
-              <span className={authFieldIconClass} aria-hidden>
-                <Phone size={16} />
-              </span>
-              <input
-                id="telefonoNumero"
-                name="telefonoNumero"
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="tel-national"
-                placeholder="2804123456"
-                className={authInputClass}
-                value={telefonoNumero}
-                onChange={(e) => setTelefonoNumero(e.target.value.replace(/\D/g, ""))}
-              />
-            </div>
+            <input
+              id="telefonoNumero"
+              name="telefonoNumero"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="tel-national"
+              placeholder="2804123456"
+              className={`flex-1 ${authInputClassNoIcon}`}
+              value={telefonoNumero}
+              onChange={(e) => setTelefonoNumero(e.target.value.replace(/\D/g, ""))}
+            />
           </div>
           <p className="mt-1 text-xs text-ink-soft">Código de área + número, sin el 0 ni el 15.</p>
         </div>
 
-        <AuthField
-          id="password"
-          name="password"
-          label="Contraseña"
-          labelClassName={compactLabelClass}
-          icon={<Lock size={16} />}
-          type="password"
-          autoComplete="new-password"
-          minLength={8}
-          placeholder="Escribí tu contraseña"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-4">
+          <AuthField
+            id="password"
+            name="password"
+            label="Contraseña"
+            labelClassName={compactLabelClass}
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            placeholder="Escribí tu contraseña"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <AuthField
-          id="confirmarPassword"
-          name="confirmarPassword"
-          label="Confirmar contraseña"
-          labelClassName={compactLabelClass}
-          icon={<Lock size={16} />}
-          type="password"
-          autoComplete="new-password"
-          placeholder="Repetí tu contraseña"
-          required
-          value={confirmarPassword}
-          onChange={(e) => setConfirmarPassword(e.target.value)}
-        />
+          <AuthField
+            id="confirmarPassword"
+            name="confirmarPassword"
+            label="Confirmar contraseña"
+            labelClassName={compactLabelClass}
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repetí tu contraseña"
+            required
+            value={confirmarPassword}
+            onChange={(e) => setConfirmarPassword(e.target.value)}
+          />
+        </div>
       </div>
 
       <input type="hidden" name="captchaToken" value={captchaToken} />

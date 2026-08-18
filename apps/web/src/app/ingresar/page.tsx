@@ -20,6 +20,7 @@ export default async function IngresarPage() {
   return (
     <AuthShell
       title="Iniciar sesión"
+      subtitle="Ingresá para ver tus reservas."
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={
         <>

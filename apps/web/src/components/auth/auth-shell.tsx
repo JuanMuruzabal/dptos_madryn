@@ -19,6 +19,13 @@ interface AuthShellProps {
    * AUTH_FONDO_LOGIN_CLAVE) — sin foto todavía, cae al gradiente de marca
    * (ver AUTH_FONDO_LOGIN_GRADIENT), nunca queda un fondo roto/vacío. */
   backgroundUrl?: string;
+  /** Ancho máximo de la tarjeta, default "max-w-sm" (2026-08-18, pedido
+   * del cliente: "en la página de escritorio puede ensanchar el
+   * register... pero solo en la página de escritorio") — RegistrarsePage
+   * pasa una versión más ancha desde lg: para que sus 7 campos puedan
+   * mostrarse en 2 columnas sin quedar tan vertical; /ingresar y
+   * /registrarse/confirmar no la pasan y quedan como estaban. */
+  maxWidthClassName?: string;
 }
 
 /**
@@ -36,7 +43,15 @@ interface AuthShellProps {
  * z-index negativo del pseudo-elemento no se escape hacia atrás de toda
  * la página.
  */
-export function AuthShell({ eyebrow, title, subtitle, children, footer, backgroundUrl }: AuthShellProps) {
+export function AuthShell({
+  eyebrow,
+  title,
+  subtitle,
+  children,
+  footer,
+  backgroundUrl,
+  maxWidthClassName = "max-w-sm",
+}: AuthShellProps) {
   return (
     <main
       className="auth-fondo-blur relative isolate flex flex-1 items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
@@ -51,7 +66,7 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, backgrou
           cliente: "solo la box de inicio de sesión o registro") — ver
           site-header.tsx/site-footer-visibility.tsx. Tarjeta más compacta
           (padding y márgenes reducidos, mismo pedido: "muy larga"). */}
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(18,51,59,0.25)] sm:p-7">
+      <div className={`relative w-full ${maxWidthClassName} rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(18,51,59,0.25)] sm:p-7`}>
         {/* Volver al home (2026-08-18, pedido del cliente: reemplaza el
             título "ALOJAMIENTOS MADRYN" superpuesto en la esquina, que ya
             no va) — adentro de la tarjeta, arriba de todo, por encima del
@@ -98,6 +113,11 @@ export const authFieldIconClass =
   "pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-ink-soft/60";
 export const authInputClass =
   "w-full border-0 border-b border-ink/15 bg-transparent py-2 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-tide focus:outline-none";
+// Mismo estilo, sin el pl-7 reservado para el ícono (2026-08-18, pedido
+// del cliente: sacar los íconos de los campos de login/registro) — los
+// campos sin ícono (AuthField sin la prop `icon`) usan esta variante.
+export const authInputClassNoIcon =
+  "w-full border-0 border-b border-ink/15 bg-transparent py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-tide focus:outline-none";
 
 export const authLabelClass = "mb-1 block text-sm font-medium text-ink";
 
@@ -107,11 +127,16 @@ export const authLabelClass = "mb-1 block text-sm font-medium text-ink";
 export const authSubmitClass =
   "auth-submit-button w-full rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60";
 
-/** Campo completo: label + ícono + input, en un solo lugar para no repetir
- * el layout icono-adentro-del-input en cada form. labelClassName es
- * opcional (default authLabelClass, sin cambios para quien no lo pasa) —
- * RegisterForm lo usa para un espaciado label→input más ajustado (2026-08-17,
- * pedido puntual del cliente para ESE form, ver register-form.tsx). */
+/** Campo completo: label + ícono opcional + input, en un solo lugar para
+ * no repetir el layout icono-adentro-del-input en cada form.
+ * labelClassName es opcional (default authLabelClass, sin cambios para
+ * quien no lo pasa) — RegisterForm lo usa para un espaciado label→input
+ * más ajustado (2026-08-17, pedido puntual del cliente para ESE form, ver
+ * register-form.tsx). icon es opcional (2026-08-18, pedido del cliente:
+ * sacar los íconos/símbolos de los campos de login y registro) — sin
+ * ícono, el input usa authInputClassNoIcon (mismo estilo, sin el
+ * padding-left que reservaba el lugar del ícono); ConfirmCodeForm sigue
+ * pasando ícono y no cambia. */
 export function AuthField({
   id,
   label,
@@ -121,7 +146,7 @@ export function AuthField({
 }: {
   id: string;
   label: string;
-  icon: ReactNode;
+  icon?: ReactNode;
   labelClassName?: string;
 } & Omit<React.ComponentPropsWithoutRef<"input">, "id" | "className">) {
   return (
@@ -130,10 +155,12 @@ export function AuthField({
         {label}
       </label>
       <div className={authFieldWrapClass}>
-        <span className={authFieldIconClass} aria-hidden>
-          {icon}
-        </span>
-        <input id={id} className={authInputClass} {...inputProps} />
+        {icon && (
+          <span className={authFieldIconClass} aria-hidden>
+            {icon}
+          </span>
+        )}
+        <input id={id} className={icon ? authInputClass : authInputClassNoIcon} {...inputProps} />
       </div>
     </div>
   );

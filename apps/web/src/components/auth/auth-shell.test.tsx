@@ -27,6 +27,27 @@ describe("AuthShell", () => {
     expect(link).toHaveAttribute("aria-label", "Volver al inicio");
   });
 
+  describe("ancho de la tarjeta (2026-08-18, pedido del cliente: ensanchar el register solo en desktop)", () => {
+    it("sin maxWidthClassName, usa max-w-sm por default", () => {
+      const { container } = render(
+        <AuthShell title="t" footer={null}>
+          <p>x</p>
+        </AuthShell>,
+      );
+      expect(container.querySelector(".rounded-3xl")).toHaveClass("max-w-sm");
+    });
+
+    it("con maxWidthClassName, lo usa en vez del default (RegistrarsePage)", () => {
+      const { container } = render(
+        <AuthShell title="t" footer={null} maxWidthClassName="max-w-sm lg:max-w-xl">
+          <p>x</p>
+        </AuthShell>,
+      );
+      const card = container.querySelector(".rounded-3xl");
+      expect(card).toHaveClass("max-w-sm", "lg:max-w-xl");
+    });
+  });
+
   describe("fondo con foto (2026-08-17, TR-048)", () => {
     it("con backgroundUrl, la variable CSS --auth-bg-image apunta a esa URL", () => {
       const { container } = render(
@@ -88,5 +109,19 @@ describe("AuthField", () => {
   it("sin labelClassName, usa authLabelClass por default (LoginForm/ConfirmCodeForm sin cambios)", () => {
     render(<AuthField id="nombre" label="Usuario" icon={<span />} name="nombre" type="text" />);
     expect(screen.getByText("Usuario")).toHaveClass("mb-1");
+  });
+
+  describe("sin ícono (2026-08-18, pedido del cliente: sacar los íconos/símbolos de login y registro)", () => {
+    it("sin la prop icon, no renderiza ningún ícono y el input no reserva el padding-left", () => {
+      render(<AuthField id="nombre" label="Nombre" name="nombre" type="text" />);
+      expect(screen.queryByTestId("icono")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Nombre").className).not.toContain("pl-7");
+    });
+
+    it("con icon, sí reserva el padding-left (LoginForm login sigue igual)", () => {
+      render(<AuthField id="codigo" label="Código" icon={<span data-testid="icono" />} name="codigo" type="text" />);
+      expect(screen.getByTestId("icono")).toBeInTheDocument();
+      expect(screen.getByLabelText("Código").className).toContain("pl-7");
+    });
   });
 });

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Lock, Mail } from "lucide-react";
 import { loginAction, type AuthFormState } from "@/app/actions/auth";
 import { AuthField, authSubmitClass } from "@/components/auth/auth-shell";
 import { GoogleIcon } from "@/components/auth/google-icon";
@@ -13,6 +12,9 @@ const initialState: AuthFormState = {};
  * Rediseño 2026-08-17 (TR-048). Campo "Email" (no "Usuario" — aclarado
  * por el cliente: el login es mail + contraseña, no usuario + contraseña;
  * "Usuario" queda solo en RegisterForm, que sí lo pide como campo propio).
+ * Sin íconos en los campos (2026-08-18, pedido del cliente: "quitar los
+ * emojis o los símbolos") — AuthField sin la prop `icon` cae a
+ * authInputClassNoIcon, mismo look sin el espacio reservado a la izquierda.
  */
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialState);
@@ -23,7 +25,6 @@ export function LoginForm() {
         id="email"
         name="email"
         label="Email"
-        icon={<Mail size={16} />}
         type="email"
         autoComplete="email"
         placeholder="Escribí tu email"
@@ -35,7 +36,6 @@ export function LoginForm() {
           id="password"
           name="password"
           label="Contraseña"
-          icon={<Lock size={16} />}
           type="password"
           autoComplete="current-password"
           placeholder="Escribí tu contraseña"
