@@ -38,7 +38,18 @@ COPY packages/shared-types packages/shared-types
 # deshabilitado siempre). Render pasa las env vars del dashboard como
 # --build-arg automáticamente cuando el Dockerfile declara un ARG con
 # el mismo nombre — de ahí este bloque.
-ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+#
+# Bug real #2 (mismo día): un ARG sin --build-arg explícito (nunca
+# cargado en Render, como TURNSTILE en ese momento) NO queda "unset" —
+# Docker lo resuelve como string vacío "". El código de register-form.tsx
+# usaba `?? "1x00..."`, que solo cae al fallback con null/undefined,
+# nunca con "" — la site key de prueba nunca se aplicaba, Turnstile
+# tiraba "Invalid input for parameter sitekey, got ''" y la página entera
+# de /registrarse fallaba al cargar. Se arregló en dos capas: el código
+# pasó a `||` (cae al fallback también con ""), y acá el ARG mismo tiene
+# un default — así ninguna de las dos capas depende de que la otra esté
+# bien para no romper.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID

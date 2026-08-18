@@ -49,7 +49,12 @@ const TELEFONO_REGEX = /^\d{6,14}$/;
 // PRUEBA pública de Cloudflare (siempre aprueba), así el registro funciona
 // en desarrollo local sin cuenta de Cloudflare real. NEXT_PUBLIC_ (no un
 // secreto: el widget del navegador la necesita ahí a la fuerza).
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+// || (no ??) a propósito — bug real en producción (2026-08-18): Docker
+// pasa esta env var como string vacío "" cuando no está cargada en
+// Render (no como undefined), y "" ?? fallback da "" (?? solo cae al
+// fallback con null/undefined, nunca con un string vacío) — con || sí
+// cae al fallback en los dos casos.
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
 
 /**
  * Rediseño 2026-08-17/18 (TR-048): Nombre+Apellido/Email/Confirmar email/

@@ -12,9 +12,13 @@ vi.mock("@/app/actions/auth", () => ({ registerAction }));
 // PRUEBA (siempre aprueba), controlable por test vía autoApprove: sin
 // esto, captchaToken nunca se completa y el submit queda deshabilitado
 // para siempre en cualquier test.
-const { autoApprove } = vi.hoisted(() => ({ autoApprove: { current: true } }));
+const { autoApprove, siteKeysRecibidas } = vi.hoisted(() => ({
+  autoApprove: { current: true },
+  siteKeysRecibidas: [] as string[],
+}));
 vi.mock("@/components/auth/turnstile-widget", () => ({
-  TurnstileWidget: ({ onToken }: { onToken: (token: string) => void }) => {
+  TurnstileWidget: ({ siteKey, onToken }: { siteKey: string; onToken: (token: string) => void }) => {
+    siteKeysRecibidas.push(siteKey);
     useEffect(() => {
       if (autoApprove.current) onToken("token-de-prueba");
     }, [onToken]);
@@ -26,6 +30,29 @@ beforeEach(() => {
   vi.clearAllMocks();
   registerAction.mockResolvedValue({});
   autoApprove.current = true;
+  siteKeysRecibidas.length = 0;
+});
+
+// Regresión de un bug real en producción (2026-08-18): Docker pasa
+// NEXT_PUBLIC_TURNSTILE_SITE_KEY como "" (no undefined) cuando no está
+// cargada en Render — con `??` el fallback nunca se aplicaba, Turnstile
+// tiraba "Invalid input for parameter sitekey" y /registrarse fallaba al
+// cargar entero. `||` sí cae al fallback también con "".
+describe("TURNSTILE_SITE_KEY (2026-08-18)", () => {
+  it("con NEXT_PUBLIC_TURNSTILE_SITE_KEY='' (string vacío, no undefined), usa la site key de prueba", async () => {
+    const original = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "";
+    vi.resetModules();
+    const { RegisterForm: RegisterFormConEnvVacia } = await import("./register-form");
+
+    render(<RegisterFormConEnvVacia />);
+
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = original;
+    vi.resetModules();
+
+    expect(siteKeysRecibidas).toContain("1x00000000000000000000AA");
+    expect(siteKeysRecibidas).not.toContain("");
+  });
 });
 
 async function completarCamposValidos(user: ReturnType<typeof userEvent.setup>) {
