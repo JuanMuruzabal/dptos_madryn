@@ -1,16 +1,24 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { fetchImagenesSitioMap } from "@/lib/api";
+import { AUTH_FONDO_LOGIN_CLAVE } from "@/lib/auth-fondo";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { RegisterForm } from "@/components/auth/register-form";
 
+// Ver comentario en app/ingresar/page.tsx sobre por qué instant = false.
+export const instant = false;
+
 export const metadata: Metadata = { title: "Crear cuenta — Turismo Marcuzzi" };
 
-export default function RegistrarsePage() {
+export default async function RegistrarsePage() {
+  const imagenes = await fetchImagenesSitioMap();
+
   return (
     <AuthShell
       eyebrow="Turismo Marcuzzi"
       title="Crear cuenta"
       subtitle="Registrate para reservar tu alojamiento y, una vez confirmado, acceder a experiencias, servicio turístico y traslados."
+      backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={
         <>
           ¿Ya tenés cuenta?{" "}

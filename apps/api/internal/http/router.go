@@ -13,6 +13,7 @@ import (
 
 	"turismo-marcuzzi/api/internal/email"
 	"turismo-marcuzzi/api/internal/storage"
+	"turismo-marcuzzi/api/internal/turnstile"
 )
 
 // NewRouter arma el router raíz de la API. db puede ser nil (arranque sin
@@ -23,8 +24,10 @@ import (
 // que el router siga siendo el único lugar que sabe de rutas HTTP; sender
 // manda los emails transaccionales de T3.3 (TR-014); corsOrigins son los
 // orígenes permitidos para llamadas directas del navegador (config.Config.
-// CORSAllowedOrigins, TR-041).
-func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir string, sender email.Sender, corsOrigins []string) http.Handler {
+// CORSAllowedOrigins, TR-041); captcha verifica el CAPTCHA del registro
+// (TR-047) — nil lo deshabilita, solo pensado para tests que no lo
+// ejercitan a propósito.
+func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir string, sender email.Sender, corsOrigins []string, captcha turnstile.Verifier) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -51,7 +54,7 @@ func NewRouter(db *gorm.DB, jwtSecret string, store storage.Storage, uploadsDir 
 	r.Get("/health", healthHandler(db))
 
 	r.Route("/auth", func(r chi.Router) {
-		registerAuthRoutes(r, db, jwtSecret)
+		registerAuthRoutes(r, db, jwtSecret, captcha)
 	})
 
 	r.With(requireAuth(jwtSecret)).Get("/me", meHandler(db))

@@ -35,6 +35,12 @@ func TestLoad_DefaultsSinVariablesDeEntorno(t *testing.T) {
 	if len(cfg.CORSAllowedOrigins) != 1 || cfg.CORSAllowedOrigins[0] != "http://localhost:3000" {
 		t.Errorf("CORSAllowedOrigins = %v, esperaba [\"http://localhost:3000\"]", cfg.CORSAllowedOrigins)
 	}
+	// Secret key de PRUEBA pública de Cloudflare (siempre aprueba) — el
+	// registro tiene que funcionar en desarrollo local sin una cuenta de
+	// Cloudflare real todavía.
+	if cfg.TurnstileSecretKey != "1x0000000000000000000000000000000AA" {
+		t.Errorf("TurnstileSecretKey = %q, esperaba el secret de prueba de Cloudflare", cfg.TurnstileSecretKey)
+	}
 }
 
 func TestLoad_VariablesDeEntornoPisanLosDefaults(t *testing.T) {
@@ -64,6 +70,16 @@ func TestLoad_VariablesDeEntornoPisanLosDefaults(t *testing.T) {
 	}
 	if cfg.UploadsBaseURL != "https://cdn.example.com/uploads" {
 		t.Errorf("UploadsBaseURL = %q, esperaba el valor de UPLOADS_BASE_URL, no uno derivado de PORT", cfg.UploadsBaseURL)
+	}
+}
+
+func TestLoad_TurnstileSecretKeyPisaElDefault(t *testing.T) {
+	t.Setenv("TURNSTILE_SECRET_KEY", "0x-secret-real-de-produccion")
+
+	cfg := Load()
+
+	if cfg.TurnstileSecretKey != "0x-secret-real-de-produccion" {
+		t.Errorf("TurnstileSecretKey = %q, esperaba el valor de TURNSTILE_SECRET_KEY", cfg.TurnstileSecretKey)
 	}
 }
 

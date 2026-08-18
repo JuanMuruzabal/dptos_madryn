@@ -15,6 +15,7 @@ import (
 	apihttp "turismo-marcuzzi/api/internal/http"
 	"turismo-marcuzzi/api/internal/reservas"
 	"turismo-marcuzzi/api/internal/storage"
+	"turismo-marcuzzi/api/internal/turnstile"
 )
 
 func main() {
@@ -53,7 +54,12 @@ func main() {
 	// mandar de verdad — ver internal/email.
 	sender := email.LogSender{}
 
-	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender, cfg.CORSAllowedOrigins)
+	// TR-047: verifica el CAPTCHA (Cloudflare Turnstile) del registro del
+	// lado del servidor — con el secret de prueba por defecto (ver
+	// config.Load) funciona en desarrollo local sin credenciales reales.
+	captcha := turnstile.HTTPVerifier{Secret: cfg.TurnstileSecretKey}
+
+	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender, cfg.CORSAllowedOrigins, captcha)
 
 	// T3.5/T3.7/TR-015/TR-016: barrido de reservas 'pendiente' vencidas
 	// (5 min sin contactar, o 2h contactadas sin confirmar). Cada 30s, no

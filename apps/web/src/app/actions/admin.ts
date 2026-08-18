@@ -295,6 +295,13 @@ export async function subirImagenSitioAction(
   revalidatePath("/admin/editor-pagina");
   revalidatePath("/", "layout");
   revalidatePath("/alojamiento");
+  // Fondo de /ingresar y /registrarse (TR-048) — comparten la misma clave
+  // AUTH_FONDO_LOGIN_CLAVE, así que se revalidan las 3 rutas que la usan
+  // (confirmar/ incluida) sin filtrar por qué clave se subió — son pocas
+  // rutas, no vale la pena el chequeo extra.
+  revalidatePath("/ingresar");
+  revalidatePath("/registrarse");
+  revalidatePath("/registrarse/confirmar");
   return { success: true };
 }
 
@@ -305,4 +312,7 @@ export async function borrarImagenSitioAction(clave: string): Promise<void> {
   revalidatePath("/admin/editor-pagina");
   revalidatePath("/", "layout");
   revalidatePath("/alojamiento");
+  revalidatePath("/ingresar");
+  revalidatePath("/registrarse");
+  revalidatePath("/registrarse/confirmar");
 }

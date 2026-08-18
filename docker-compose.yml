@@ -4,7 +4,8 @@
 # entre desarrolladores, no como definición de infra de producción.
 #
 # Variables opcionales en un `.env` junto a este archivo (ver
-# .env.example): JWT_SECRET, CONTACTO_WHATSAPP, CONTACTO_EMAIL.
+# .env.example): JWT_SECRET, CONTACTO_WHATSAPP, CONTACTO_EMAIL,
+# TURNSTILE_SECRET_KEY, NEXT_PUBLIC_TURNSTILE_SITE_KEY.
 
 services:
   postgres:
@@ -65,6 +66,9 @@ services:
       # el NAVEGADOR al pedir la imagen, no el contenedor — y el puerto
       # 8080 del servicio api está publicado al host más abajo.
       UPLOADS_BASE_URL: http://localhost:8080/uploads
+      # CAPTCHA del registro (Cloudflare Turnstile, TR-047) — sin setear,
+      # config.go ya cae al secret key de PRUEBA público de Cloudflare.
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
     ports:
       - "8080:8080"
     volumes:
@@ -89,6 +93,8 @@ services:
       API_URL: http://api:8080
       CONTACTO_WHATSAPP: ${CONTACTO_WHATSAPP:-5492804000000}
       CONTACTO_EMAIL: ${CONTACTO_EMAIL:-hola@turismomarcuzzi.com.ar}
+      # Par público de TURNSTILE_SECRET_KEY de arriba (ver comentario ahí).
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-1x00000000000000000000AA}
     ports:
       - "3000:3000"
     depends_on:

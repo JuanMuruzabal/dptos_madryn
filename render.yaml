@@ -71,6 +71,14 @@ services:
         sync: false
       - key: R2_PUBLIC_URL
         sync: false
+      # CAPTCHA del registro (Cloudflare Turnstile, TR-047). Sin setear
+      # acá, config.go cae al secret key de PRUEBA público de Cloudflare
+      # (siempre aprueba) — el registro sigue funcionando en producción
+      # aunque no se cargue esto, pero SIN protección anti-bot real hasta
+      # que se cargue el secret key de una cuenta de Cloudflare real (tiene
+      # que ser el par de NEXT_PUBLIC_TURNSTILE_SITE_KEY, abajo).
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
 
   # --- Frontend Next.js (apps/web) ---
   - type: web
@@ -97,4 +105,9 @@ services:
       - key: CONTACTO_WHATSAPP
         sync: false
       - key: CONTACTO_EMAIL
+        sync: false
+      # Par público de TURNSTILE_SECRET_KEY de arriba — viaja al navegador
+      # a propósito, el widget de Turnstile la necesita ahí (NEXT_PUBLIC_).
+      # Sin setear, cae a la site key de PRUEBA pública de Cloudflare.
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
         sync: false

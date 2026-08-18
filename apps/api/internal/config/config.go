@@ -31,6 +31,15 @@ type Config struct {
 	// Next.js vía Server Actions/Components, que no pasan por CORS). En
 	// producción, la URL pública del servicio web de Render.
 	CORSAllowedOrigins []string
+	// TurnstileSecretKey (2026-08-17, TR-047) — verifica del lado del
+	// servidor el CAPTCHA del registro (internal/turnstile). El default es
+	// el secret key de PRUEBA que Cloudflare documenta públicamente y que
+	// siempre aprueba (https://developers.cloudflare.com/turnstile/troubleshooting/testing/)
+	// — no es información sensible, es a propósito así de conocido; con
+	// esto el registro funciona en desarrollo local sin necesitar una
+	// cuenta de Cloudflare real todavía. En producción se pisa con la
+	// secret key real (Render, sync: false, ver render.yaml).
+	TurnstileSecretKey string
 }
 
 // Load lee la configuración desde variables de entorno, con valores por
@@ -52,6 +61,8 @@ func Load() Config {
 		R2PublicURL:       getEnv("R2_PUBLIC_URL", ""),
 
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
+
+		TurnstileSecretKey: getEnv("TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA"),
 	}
 }
 

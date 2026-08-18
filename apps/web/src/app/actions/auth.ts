@@ -43,20 +43,33 @@ export async function registerAction(
 ): Promise<AuthFormState> {
   const nombre = String(formData.get("nombre") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
+  const confirmarEmail = String(formData.get("confirmarEmail") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const confirmarPassword = String(formData.get("confirmarPassword") ?? "");
   const telefono = String(formData.get("telefono") ?? "").trim();
+  const captchaToken = String(formData.get("captchaToken") ?? "");
 
-  if (!nombre) return { error: "Ingresá tu nombre." };
+  if (!nombre) return { error: "Ingresá tu usuario." };
   if (!email.includes("@")) return { error: "Ingresá un email válido." };
+  // Defensa en profundidad (TR-048) — RegisterForm ya valida esto mismo
+  // en el cliente antes de dejar que el form se envíe; esto cubre el caso
+  // de alguien pegándole directo a la Server Action sin pasar por esa UI.
+  if (email !== confirmarEmail) return { error: "Los emails no coinciden." };
   if (password.length < MIN_PASSWORD_LEN) {
     return { error: `La contraseña debe tener al menos ${MIN_PASSWORD_LEN} caracteres.` };
   }
+  if (password !== confirmarPassword) return { error: "Las contraseñas no coinciden." };
+  // El backend vuelve a verificar esto contra la API de Cloudflare
+  // (nunca confiar en que un token "existe" del lado del cliente) — este
+  // chequeo acá es solo para no hacer el POST si ni siquiera hay token.
+  if (!captchaToken) return { error: "Completá la verificación anti-bot." };
 
   const result = await postAuth("/auth/register", {
     nombre,
     email,
     password,
     telefono: telefono || undefined,
+    captchaToken,
   });
 
   if (!result.ok) return { error: result.error };

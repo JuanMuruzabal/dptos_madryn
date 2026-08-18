@@ -192,6 +192,46 @@
     background-color: #f2ede3;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='18'%3E%3Cpath d='M0 9 Q15 0 30 9 T60 9' fill='none' stroke='%2316323a' stroke-opacity='0.07' stroke-width='1.2'/%3E%3C/svg%3E");
   }
+
+  /* Fondo de /ingresar y /registrarse (2026-08-17, pedido del cliente,
+   * TR-048) — foto desenfocada + velo oscuro semitransparente, ambos en
+   * capas ::before/::after APARTE del contenido (nunca desenfoca la
+   * tarjeta ni el texto). Las variables --auth-bg-image/--auth-bg-fallback
+   * las pone auth-shell.tsx inline (backgroundUrl viene del editor de
+   * página, por alojamiento — no se puede fijar en un CSS estático).
+   *
+   * inset: -20px en vez de position:absolute + transform:scale para el
+   * mismo problema de siempre con filter:blur() + background-size:cover:
+   * sin ese margen de sobra, el desenfoque "revela" un aro más claro justo
+   * en el borde del elemento (no hay imagen de la que tomar muestra más
+   * allá del borde) — overflow-hidden en el <main> (auth-shell.tsx) recorta
+   * ese excedente, así que nunca se ve. */
+  .auth-fondo-blur::before {
+    content: "";
+    position: absolute;
+    inset: -20px;
+    z-index: -2;
+    background-image: var(--auth-bg-image), var(--auth-bg-fallback);
+    background-size: cover;
+    background-position: center;
+    filter: blur(18px);
+  }
+
+  .auth-fondo-blur::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(18, 51, 59, 0.55), rgba(18, 51, 59, 0.75));
+  }
+
+  /* Botón principal de /ingresar y /registrarse (2026-08-17, pedido del
+   * cliente: "gradiente que va de turquesa/verde a magenta/violeta") —
+   * hex puntuales de este pedido, no tokens del sistema de diseño del
+   * resto del sitio (mismo criterio que .bg-tapiz/TR-046). */
+  .auth-gradient-button {
+    background: linear-gradient(90deg, #16a34a 0%, #06b6d4 45%, #a855f7 100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

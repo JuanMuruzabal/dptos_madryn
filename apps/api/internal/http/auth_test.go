@@ -4,12 +4,26 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"turismo-marcuzzi/api/internal/db"
 	"turismo-marcuzzi/api/internal/testdb"
 )
+
+// fakeCaptcha — turnstile.Verifier de mentira para tests, nunca pega a la
+// red real (mismo criterio que el resto de la suite con dependencias
+// externas, ver internal/email.LogSender).
+type fakeCaptcha struct {
+	ok  bool
+	err error
+}
+
+func (f fakeCaptcha) Verify(token, remoteIP string) (bool, error) {
+	return f.ok, f.err
+}
 
 func jsonBody(t *testing.T, v any) *bytes.Buffer {
 	t.Helper()
@@ -110,6 +124,80 @@ func TestRegister_CuerpoInvalidoDaBadRequest(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, esperaba %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+// --- CAPTCHA (TR-047) ---
+
+func TestRegister_SinCaptchaConfiguradoNoLoExige(t *testing.T) {
+	// h.captcha nil (no seteado) — mismo caso que TODOS los demás tests de
+	// este archivo, que no mandan CaptchaToken: siguen pasando porque el
+	// registro real (producción) siempre lo trae seteado desde main.go,
+	// esto es solo para no exigirlo en tests que no lo ejercitan a propósito.
+	h := &authHandler{db: testdb.New(t), jwtSecret: testSecret}
+	body := jsonBody(t, registerRequest{Nombre: "Test", Email: "sincaptcha@example.com", Password: "password123"})
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", body))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+}
+
+func TestRegister_ConCaptchaConfiguradoPeroSinTokenDaBadRequest(t *testing.T) {
+	h := &authHandler{db: testdb.New(t), jwtSecret: testSecret, captcha: fakeCaptcha{ok: true}}
+	body := jsonBody(t, registerRequest{Nombre: "Test", Email: "sintoken@example.com", Password: "password123"})
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", body))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestRegister_CaptchaRechazadoDaBadRequestYNoCreaElUsuario(t *testing.T) {
+	tx := testdb.New(t)
+	h := &authHandler{db: tx, jwtSecret: testSecret, captcha: fakeCaptcha{ok: false}}
+	body := jsonBody(t, registerRequest{
+		Nombre: "Test", Email: "rechazado@example.com", Password: "password123", CaptchaToken: "token-cualquiera",
+	})
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", body))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	var count int64
+	tx.Model(&db.Usuario{}).Where("email = ?", "rechazado@example.com").Count(&count)
+	if count != 0 {
+		t.Error("no debería haberse creado ningún usuario con un captcha rechazado")
+	}
+}
+
+func TestRegister_ErrorVerificandoCaptchaDaInternalServerError(t *testing.T) {
+	h := &authHandler{db: testdb.New(t), jwtSecret: testSecret, captcha: fakeCaptcha{err: errors.New("cloudflare caído")}}
+	body := jsonBody(t, registerRequest{
+		Nombre: "Test", Email: "errorcaptcha@example.com", Password: "password123", CaptchaToken: "token-cualquiera",
+	})
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", body))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+}
+
+func TestRegister_CaptchaAprobadoCreaElUsuario(t *testing.T) {
+	h := &authHandler{db: testdb.New(t), jwtSecret: testSecret, captcha: fakeCaptcha{ok: true}}
+	body := jsonBody(t, registerRequest{
+		Nombre: "Test", Email: "aprobado@example.com", Password: "password123", CaptchaToken: "token-valido",
+	})
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", body))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusCreated, rec.Body.String())
 	}
 }
 

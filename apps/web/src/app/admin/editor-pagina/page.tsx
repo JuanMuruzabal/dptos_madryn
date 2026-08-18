@@ -4,6 +4,7 @@ import { getSessionToken } from "@/lib/session";
 import { fetchImagenesSitio } from "@/lib/api";
 import { heroScenes } from "@/lib/scenes";
 import { categories } from "@/lib/categories";
+import { AUTH_FONDO_LOGIN_CLAVE, AUTH_FONDO_LOGIN_GRADIENT } from "@/lib/auth-fondo";
 import { ImagenSitioSlot } from "@/components/admin/imagen-sitio-slot";
 
 // Ver comentario en app/admin/layout.tsx.
@@ -65,6 +66,25 @@ export default async function EditorPaginaPage() {
                 url={overrides.get(c.scene.clave)}
               />
             ))}
+        </div>
+      </section>
+
+      {/* Fondo de login/registro (2026-08-17, pedido del cliente, TR-048)
+          — una sola foto compartida entre /ingresar y /registrarse. */}
+      <section className="mt-10">
+        <h2 className="tracked-caps text-xs font-semibold text-ink-soft">
+          Fondo de inicio de sesión / crear cuenta
+        </h2>
+        <p className="mt-1 max-w-lg text-sm text-ink-soft">
+          Se ve desenfocada y oscurecida detrás de la tarjeta blanca, en las dos pantallas.
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ImagenSitioSlot
+            clave={AUTH_FONDO_LOGIN_CLAVE}
+            label="Fondo de login y registro"
+            gradient={AUTH_FONDO_LOGIN_GRADIENT}
+            url={overrides.get(AUTH_FONDO_LOGIN_CLAVE)}
+          />
         </div>
       </section>
     </div>

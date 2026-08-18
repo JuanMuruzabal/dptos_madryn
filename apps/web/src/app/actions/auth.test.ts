@@ -28,38 +28,74 @@ function mockFetchOnce(status: number, body: unknown, ok = status >= 200 && stat
   } as unknown as Response);
 }
 
+// Campos válidos completos (2026-08-17, TR-048: Usuario/Email/Confirmar
+// email/Contraseña/Confirmar contraseña/captchaToken) — el helper evita
+// repetir los 6 campos en cada test que solo quiere variar uno.
+function registroValido(overrides: Record<string, string> = {}): Record<string, string> {
+  return {
+    nombre: "Ana",
+    email: "a@b.com",
+    confirmarEmail: "a@b.com",
+    password: "password123",
+    confirmarPassword: "password123",
+    captchaToken: "token-de-prueba",
+    ...overrides,
+  };
+}
+
 describe("registerAction", () => {
-  it("rechaza sin nombre", async () => {
+  it("rechaza sin usuario", async () => {
     const { registerAction } = await import("./auth");
-    const resultado = await registerAction({}, formData({ email: "a@b.com", password: "password123" }));
-    expect(resultado.error).toMatch(/nombre/i);
+    const resultado = await registerAction({}, formData(registroValido({ nombre: "" })));
+    expect(resultado.error).toMatch(/usuario/i);
   });
 
   it("rechaza un email sin @", async () => {
     const { registerAction } = await import("./auth");
     const resultado = await registerAction(
       {},
-      formData({ nombre: "Ana", email: "no-es-email", password: "password123" }),
+      formData(registroValido({ email: "no-es-email", confirmarEmail: "no-es-email" })),
     );
     expect(resultado.error).toMatch(/email/i);
+  });
+
+  it("rechaza si el email y su confirmación no coinciden", async () => {
+    const { registerAction } = await import("./auth");
+    const resultado = await registerAction(
+      {},
+      formData(registroValido({ confirmarEmail: "otro@b.com" })),
+    );
+    expect(resultado.error).toMatch(/emails no coinciden/i);
   });
 
   it("rechaza una password corta", async () => {
     const { registerAction } = await import("./auth");
     const resultado = await registerAction(
       {},
-      formData({ nombre: "Ana", email: "a@b.com", password: "corta" }),
+      formData(registroValido({ password: "corta", confirmarPassword: "corta" })),
     );
     expect(resultado.error).toMatch(/8 caracteres/);
+  });
+
+  it("rechaza si la contraseña y su confirmación no coinciden", async () => {
+    const { registerAction } = await import("./auth");
+    const resultado = await registerAction(
+      {},
+      formData(registroValido({ confirmarPassword: "otraPassword123" })),
+    );
+    expect(resultado.error).toMatch(/contraseñas no coinciden/i);
+  });
+
+  it("rechaza sin token de captcha", async () => {
+    const { registerAction } = await import("./auth");
+    const resultado = await registerAction({}, formData(registroValido({ captchaToken: "" })));
+    expect(resultado.error).toMatch(/verificación anti-bot/i);
   });
 
   it("propaga el error del backend (p. ej. email duplicado)", async () => {
     mockFetchOnce(409, { error: "ya existe una cuenta con ese email" });
     const { registerAction } = await import("./auth");
-    const resultado = await registerAction(
-      {},
-      formData({ nombre: "Ana", email: "a@b.com", password: "password123" }),
-    );
+    const resultado = await registerAction({}, formData(registroValido()));
     expect(resultado.error).toBe("ya existe una cuenta con ese email");
   });
 
@@ -67,23 +103,33 @@ describe("registerAction", () => {
     mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana", email: "a@b.com", rol: "cliente" }, token: "el-token" });
     const { registerAction } = await import("./auth");
 
-    await expect(
-      registerAction({}, formData({ nombre: "Ana", email: "a@b.com", password: "password123" })),
-    ).rejects.toThrow("REDIRECT:/perfil");
+    await expect(registerAction({}, formData(registroValido()))).rejects.toThrow("REDIRECT:/perfil");
 
     expect(createSession).toHaveBeenCalledWith("el-token");
   });
 
-  it("el teléfono es opcional", async () => {
+  it("manda el captchaToken al backend", async () => {
     mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana", email: "a@b.com", rol: "cliente" }, token: "t" });
     const { registerAction } = await import("./auth");
 
     await expect(
-      registerAction({}, formData({ nombre: "Ana", email: "a@b.com", password: "password123" })),
+      registerAction({}, formData(registroValido({ captchaToken: "token-real" }))),
     ).rejects.toThrow();
 
     const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1]?.body as string) ?? "{}");
+    expect(body.captchaToken).toBe("token-real");
+  });
+
+  it("el teléfono es opcional (y confirmarEmail/confirmarPassword no viajan al backend)", async () => {
+    mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana", email: "a@b.com", rol: "cliente" }, token: "t" });
+    const { registerAction } = await import("./auth");
+
+    await expect(registerAction({}, formData(registroValido()))).rejects.toThrow();
+
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1]?.body as string) ?? "{}");
     expect(body.telefono).toBeUndefined();
+    expect(body.confirmarEmail).toBeUndefined();
+    expect(body.confirmarPassword).toBeUndefined();
   });
 });
 

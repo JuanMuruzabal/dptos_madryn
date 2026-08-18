@@ -14,13 +14,17 @@ import (
 
 	"turismo-marcuzzi/api/internal/auth"
 	"turismo-marcuzzi/api/internal/db"
+	"turismo-marcuzzi/api/internal/turnstile"
 )
 
 const minPasswordLen = 8
 
 // registerAuthRoutes monta /auth/register y /auth/login (spec §4.5).
-func registerAuthRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string) {
-	h := &authHandler{db: gdb, jwtSecret: jwtSecret}
+// captcha nil deshabilita la verificación anti-bot del registro por
+// completo (usado en tests que no la ejercitan a propósito) — en
+// producción/desarrollo real siempre viene seteado desde cmd/api/main.go.
+func registerAuthRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string, captcha turnstile.Verifier) {
+	h := &authHandler{db: gdb, jwtSecret: jwtSecret, captcha: captcha}
 	r.Post("/register", h.register)
 	r.Post("/login", h.login)
 }
@@ -28,6 +32,7 @@ func registerAuthRoutes(r chi.Router, gdb *gorm.DB, jwtSecret string) {
 type authHandler struct {
 	db        *gorm.DB
 	jwtSecret string
+	captcha   turnstile.Verifier
 }
 
 type registerRequest struct {
@@ -35,6 +40,10 @@ type registerRequest struct {
 	Email    string  `json:"email"`
 	Password string  `json:"password"`
 	Telefono *string `json:"telefono,omitempty"`
+	// CaptchaToken (2026-08-17, TR-047) — el token que devuelve el widget
+	// de Cloudflare Turnstile en el frontend; se verifica acá contra la
+	// API de Cloudflare antes de crear la cuenta (ver h.captcha).
+	CaptchaToken string `json:"captchaToken"`
 }
 
 type loginRequest struct {
@@ -62,6 +71,27 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "cuerpo de la petición inválido")
 		return
 	}
+
+	// Verificación anti-bot (TR-047) — ANTES de tocar la base, para no
+	// gastar una consulta/hash de bcrypt en un intento que ni siquiera
+	// pasó el CAPTCHA. h.captcha nil (solo en tests que no la ejercitan a
+	// propósito) salta este chequeo entero.
+	if h.captcha != nil {
+		if req.CaptchaToken == "" {
+			writeError(w, http.StatusBadRequest, "falta la verificación anti-bot")
+			return
+		}
+		ok, err := h.captcha.Verify(req.CaptchaToken, r.RemoteAddr)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "error verificando el captcha")
+			return
+		}
+		if !ok {
+			writeError(w, http.StatusBadRequest, "verificación anti-bot inválida — probá de nuevo")
+			return
+		}
+	}
+
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	req.Nombre = strings.TrimSpace(req.Nombre)
 
