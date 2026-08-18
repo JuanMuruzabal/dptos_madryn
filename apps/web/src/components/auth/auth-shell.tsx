@@ -19,12 +19,14 @@ interface AuthShellProps {
    * AUTH_FONDO_LOGIN_CLAVE) — sin foto todavía, cae al gradiente de marca
    * (ver AUTH_FONDO_LOGIN_GRADIENT), nunca queda un fondo roto/vacío. */
   backgroundUrl?: string;
-  /** Ancho máximo de la tarjeta, default "max-w-sm" (2026-08-18, pedido
-   * del cliente: "en la página de escritorio puede ensanchar el
-   * register... pero solo en la página de escritorio") — RegistrarsePage
-   * pasa una versión más ancha desde lg: para que sus 7 campos puedan
-   * mostrarse en 2 columnas sin quedar tan vertical; /ingresar y
-   * /registrarse/confirmar no la pasan y quedan como estaban. */
+  /** Ancho máximo de la tarjeta, default "max-w-sm" (2026-08-18). Un primer
+   * intento le dio a RegistrarsePage un ancho mayor SOLO desde lg: para
+   * mostrar 2 columnas de campos — el cliente lo probó y lo encontró
+   * "demasiado ancho y estirado en desktop", así que RegistrarsePage
+   * ahora pasa un tope fijo de 460px en TODOS los tamaños ("max-w-[460px]")
+   * y volvió a una sola columna (excepto Nombre+Apellido, que la piden
+   * juntos) — ver register-form.tsx. /ingresar y /registrarse/confirmar
+   * no la pasan y quedan como estaban. */
   maxWidthClassName?: string;
 }
 

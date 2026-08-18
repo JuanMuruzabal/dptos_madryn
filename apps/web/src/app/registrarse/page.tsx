@@ -18,7 +18,7 @@ export default async function RegistrarsePage() {
       title="Crear cuenta"
       subtitle="Sumate en un minuto."
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
-      maxWidthClassName="max-w-sm lg:max-w-xl"
+      maxWidthClassName="max-w-[460px]"
       footer={
         <>
           ¿Ya tenés cuenta?{" "}

@@ -27,7 +27,7 @@ describe("AuthShell", () => {
     expect(link).toHaveAttribute("aria-label", "Volver al inicio");
   });
 
-  describe("ancho de la tarjeta (2026-08-18, pedido del cliente: ensanchar el register solo en desktop)", () => {
+  describe("ancho de la tarjeta (2026-08-18, pedido del cliente: 460px fijo para el register, una sola columna)", () => {
     it("sin maxWidthClassName, usa max-w-sm por default", () => {
       const { container } = render(
         <AuthShell title="t" footer={null}>
@@ -37,14 +37,14 @@ describe("AuthShell", () => {
       expect(container.querySelector(".rounded-3xl")).toHaveClass("max-w-sm");
     });
 
-    it("con maxWidthClassName, lo usa en vez del default (RegistrarsePage)", () => {
+    it("con maxWidthClassName, lo usa en vez del default (RegistrarsePage: max-w-[460px])", () => {
       const { container } = render(
-        <AuthShell title="t" footer={null} maxWidthClassName="max-w-sm lg:max-w-xl">
+        <AuthShell title="t" footer={null} maxWidthClassName="max-w-[460px]">
           <p>x</p>
         </AuthShell>,
       );
       const card = container.querySelector(".rounded-3xl");
-      expect(card).toHaveClass("max-w-sm", "lg:max-w-xl");
+      expect(card).toHaveClass("max-w-[460px]");
     });
   });
 
