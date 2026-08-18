@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, type AuthFormState } from "@/app/actions/auth";
 import { AuthField, authSubmitClass } from "@/components/auth/auth-shell";
-import { GoogleIcon } from "@/components/auth/google-icon";
+import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 
 const initialState: AuthFormState = {};
 
@@ -64,18 +64,8 @@ export function LoginForm() {
         <span className="h-px flex-1 bg-ink/10" />
       </div>
 
-      {/* Solo visual por ahora (Prompt 1) — se ve y se comporta como un
-          botón normal (sin disabled: el pedido es que quede listo tal
-          cual se va a ver en la versión final, no una preview grisada),
-          pero sin onClick todavía. La integración real de Google OAuth es
-          el Prompt 2, en su propia rama feature/. */}
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
-      >
-        <GoogleIcon />
-        Ingresá con Google
-      </button>
+      {/* Real desde el Prompt 2 (2026-08-18) — ver google-signin-button.tsx. */}
+      <GoogleSignInButton />
     </form>
   );
 }

@@ -57,7 +57,7 @@ describe("RegisterForm", () => {
     expect(screen.getByText("Código de área + número, sin el 0 ni el 15.")).toBeInTheDocument();
   });
 
-  it("muestra el botón de Google, solo visual (sin funcionalidad todavía)", () => {
+  it("muestra el botón de Google (deshabilitado en test, sin NEXT_PUBLIC_GOOGLE_CLIENT_ID — ver google-signin-button.test.tsx)", () => {
     render(<RegisterForm />);
     expect(screen.getByRole("button", { name: "Ingresá con Google" })).toBeInTheDocument();
   });

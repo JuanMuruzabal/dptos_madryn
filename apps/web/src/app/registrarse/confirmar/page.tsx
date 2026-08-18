@@ -10,16 +10,18 @@ export const instant = false;
 export const metadata: Metadata = { title: "Confirmá tu cuenta — Turismo Marcuzzi" };
 
 /**
- * Pantalla de confirmación de código (2026-08-17, Prompt 1 — "dejá
- * preparada visualmente... sin conectar todavía el envío ni la validación
- * real, eso va en el Prompt 2"). Hoy no hay forma real de llegar acá desde
- * el flujo de alta (RegisterForm sigue creando la cuenta directo, sin
- * gating de email todavía) — existe como ruta propia para poder revisar
- * el diseño, no como parte del flujo real hasta que el Prompt 2 conecte
- * la lógica.
+ * Pantalla de confirmación de código — conectada de verdad desde el
+ * Prompt 2 (2026-08-18, docs/prompts-login (1).md). Se llega acá desde
+ * registerAction (después de crear la cuenta) o desde loginAction (si
+ * alguien intenta loguearse sin haber confirmado todavía), siempre con
+ * ?email= en la URL — nunca se le pide al usuario que lo tipee de nuevo.
+ * Sin ?email= (alguien entra directo a la ruta) el form igual se muestra,
+ * simplemente con ese campo vacío.
  */
-export default async function ConfirmarCuentaPage() {
-  const imagenes = await fetchImagenesSitioMap();
+export default async function ConfirmarCuentaPage({ searchParams }: PageProps<"/registrarse/confirmar">) {
+  const [imagenes, resolvedSearchParams] = await Promise.all([fetchImagenesSitioMap(), searchParams]);
+  const emailParam = resolvedSearchParams.email;
+  const email = typeof emailParam === "string" ? emailParam : "";
 
   return (
     <AuthShell
@@ -27,7 +29,7 @@ export default async function ConfirmarCuentaPage() {
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={<>Revisá también la carpeta de spam si no lo ves.</>}
     >
-      <ConfirmCodeForm />
+      <ConfirmCodeForm email={email} />
     </AuthShell>
   );
 }

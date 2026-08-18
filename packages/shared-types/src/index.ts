@@ -17,11 +17,21 @@ export interface Usuario {
   // password_hash nunca se expone al frontend.
 }
 
-/** Espejo de authResponse en apps/api/internal/http/auth.go
- * (POST /auth/register y /auth/login). */
+/** Espejo de authResponse en apps/api/internal/http/auth.go — POST
+ * /auth/login, /auth/confirmar y /auth/google (los 3 devuelven token,
+ * dejan al usuario logueado). /auth/register NO usa esto, ver
+ * RegisterResponse (2026-08-18, Prompt 2 de docs/prompts-login (1).md). */
 export interface AuthResponse {
   usuario: Usuario;
   token: string;
+}
+
+/** Espejo de registerResponse en apps/api/internal/http/auth.go — POST
+ * /auth/register (2026-08-18, Prompt 2). Sin token: la cuenta queda
+ * pendiente de confirmación por email hasta POST /auth/confirmar. */
+export interface RegisterResponse {
+  usuario: Usuario;
+  requiereConfirmacion: boolean;
 }
 
 /** Espejo del error genérico que devuelve apps/api (writeError en

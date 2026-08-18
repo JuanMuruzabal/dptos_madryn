@@ -1,52 +1,93 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useActionState, useState } from "react";
 import { KeyRound } from "lucide-react";
+import {
+  confirmarCuentaAction,
+  reenviarCodigoAction,
+  type AuthFormState,
+  type ReenviarCodigoState,
+} from "@/app/actions/auth";
 import { AuthField, authSubmitClass } from "@/components/auth/auth-shell";
 
+const initialState: AuthFormState = {};
+const initialReenviarState: ReenviarCodigoState = {};
+
 /**
- * Solo visual por ahora (2026-08-17, Prompt 1) — "dejá preparada
- * visualmente... pero sin conectar todavía el envío ni la validación
- * real (eso va en el Prompt 2)". No hay Server Action detrás todavía: el
- * submit no manda nada a ningún lado, y el "Reenviar código" tampoco.
- * Cuando el Prompt 2 (rama feature/) conecte la lógica real, este
- * componente pasa a un form de verdad (useActionState + una Server Action
- * que valide el código contra el que se generó al registrarse).
+ * Conectado de verdad (2026-08-18, Prompt 2 de docs/prompts-login (1).md
+ * — antes, Prompt 1, esto era solo visual). confirmarCuentaAction valida
+ * el código de 6 dígitos contra el backend (POST /auth/confirmar) y
+ * loguea automático si es correcto; reenviarCodigoAction pide uno nuevo
+ * (POST /auth/reenviar-codigo — respuesta siempre genérica del backend,
+ * nunca revela si la cuenta existe o ya está confirmada, ver auth.go).
+ *
+ * Dos <form> separados (no uno anidado dentro del otro — HTML no permite
+ * forms anidados): confirmar el código y reenviarlo son dos Server
+ * Actions distintas con su propio estado de pending/error. email viene
+ * de la URL (?email=, ver app/registrarse/confirmar/page.tsx) — viaja
+ * como campo oculto en ambos forms, nunca se lo hace escribir a mano.
  */
-export function ConfirmCodeForm() {
+export function ConfirmCodeForm({ email }: { email: string }) {
+  const [state, action, pending] = useActionState(confirmarCuentaAction, initialState);
+  const [reenviarState, reenviarAction, reenviarPending] = useActionState(
+    reenviarCodigoAction,
+    initialReenviarState,
+  );
   const [codigo, setCodigo] = useState("");
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    // No-op a propósito — ver comentario de arriba.
-  }
-
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <AuthField
-        id="codigo"
-        name="codigo"
-        label="Código de confirmación"
-        icon={<KeyRound size={16} />}
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        placeholder="Escribí el código que te mandamos"
-        value={codigo}
-        onChange={(e) => setCodigo(e.target.value)}
-        required
-      />
+    <div className="space-y-4">
+      <form action={action} className="space-y-4" noValidate>
+        <input type="hidden" name="email" value={email} />
+        <AuthField
+          id="codigo"
+          name="codigo"
+          label="Código de confirmación"
+          icon={<KeyRound size={16} />}
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="Escribí el código que te mandamos"
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value)}
+          required
+        />
 
-      <button type="submit" className={`${authSubmitClass} uppercase`}>
-        Confirmar cuenta
-      </button>
+        {state.error && (
+          <p role="alert" className="text-sm text-coral-dark">
+            {state.error}
+          </p>
+        )}
 
-      <p className="text-center text-sm text-ink-soft">
-        ¿No te llegó nada?{" "}
-        <button type="button" className="font-medium text-tide hover:underline">
-          Reenviar código
+        <button type="submit" disabled={pending} className={`${authSubmitClass} uppercase`}>
+          {pending ? "Confirmando…" : "Confirmar cuenta"}
         </button>
-      </p>
-    </form>
+      </form>
+
+      <form action={reenviarAction}>
+        <input type="hidden" name="email" value={email} />
+        <p className="text-center text-sm text-ink-soft">
+          ¿No te llegó nada?{" "}
+          <button
+            type="submit"
+            disabled={reenviarPending}
+            className="font-medium text-tide hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {reenviarPending ? "Reenviando…" : "Reenviar código"}
+          </button>
+        </p>
+
+        {reenviarState.mensaje && (
+          <p role="status" className="mt-2 text-center text-xs text-ink-soft">
+            {reenviarState.mensaje}
+          </p>
+        )}
+        {reenviarState.error && (
+          <p role="alert" className="mt-2 text-center text-xs text-coral-dark">
+            {reenviarState.error}
+          </p>
+        )}
+      </form>
+    </div>
   );
 }
