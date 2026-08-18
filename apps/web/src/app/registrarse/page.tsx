@@ -15,9 +15,7 @@ export default async function RegistrarsePage() {
 
   return (
     <AuthShell
-      eyebrow="Turismo Marcuzzi"
       title="Crear cuenta"
-      subtitle="Registrate para reservar tu alojamiento y, una vez confirmado, acceder a experiencias, servicio turístico y traslados."
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={
         <>

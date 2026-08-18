@@ -16,6 +16,15 @@ describe("AuthShell", () => {
     expect(screen.getByText("¿Sos nuevo?")).toBeInTheDocument();
   });
 
+  it("muestra un link para volver al home (2026-08-17, pedido del cliente — sin header global en estas rutas)", () => {
+    render(
+      <AuthShell eyebrow="e" title="t" subtitle="s" footer={null}>
+        <p>x</p>
+      </AuthShell>,
+    );
+    expect(screen.getByRole("link", { name: "ALOJAMIENTOS MADRYN" })).toHaveAttribute("href", "/");
+  });
+
   describe("fondo con foto (2026-08-17, TR-048)", () => {
     it("con backgroundUrl, la variable CSS --auth-bg-image apunta a esa URL", () => {
       const { container } = render(
@@ -67,5 +76,15 @@ describe("AuthField", () => {
     expect(input).toHaveValue("a@b.com");
     expect(input).toHaveAttribute("placeholder", "tu email");
     expect(input).toBeRequired();
+  });
+
+  it("acepta labelClassName para pisar el espaciado default del label (RegisterForm, 2026-08-17)", () => {
+    render(<AuthField id="nombre" label="Usuario" labelClassName="mb-0.5" icon={<span />} name="nombre" type="text" />);
+    expect(screen.getByText("Usuario")).toHaveClass("mb-0.5");
+  });
+
+  it("sin labelClassName, usa authLabelClass por default (LoginForm/ConfirmCodeForm sin cambios)", () => {
+    render(<AuthField id="nombre" label="Usuario" icon={<span />} name="nombre" type="text" />);
+    expect(screen.getByText("Usuario")).toHaveClass("mb-1");
   });
 });

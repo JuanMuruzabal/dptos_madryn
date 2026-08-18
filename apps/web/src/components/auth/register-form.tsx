@@ -9,6 +9,12 @@ import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const initialState: AuthFormState = {};
 
+// Espaciado más ajustado label→input (2026-08-17, pedido puntual del
+// cliente: "la etiqueta debe quedar más pegada a su propio input" — SOLO
+// en este form, ver AuthField/authLabelClass en auth-shell.tsx, que no
+// cambian para LoginForm/ConfirmCodeForm).
+const compactLabelClass = "mb-0.5 block text-sm font-medium text-ink";
+
 // Site key pública de Turnstile (TR-047) — el fallback es la site key de
 // PRUEBA pública de Cloudflare (siempre aprueba), así el registro funciona
 // en desarrollo local sin cuenta de Cloudflare real. NEXT_PUBLIC_ (no un
@@ -77,69 +83,81 @@ export function RegisterForm() {
 
   return (
     <form action={action} onSubmit={onSubmit} className="space-y-4" noValidate>
-      <AuthField
-        id="nombre"
-        name="nombre"
-        label="Usuario"
-        icon={<User size={16} />}
-        type="text"
-        autoComplete="username"
-        placeholder="Escribí tu usuario"
-        required
-      />
+      {/* Grupo aparte con su propio espaciado, más chico y uniforme que el
+          del resto del form (2026-08-17, pedido del cliente: "la
+          separación entre un campo y el siguiente debe ser uniforme y más
+          chica") — así el resto del form (captcha, botón, divisor, Google)
+          no cambia su espaciado, solo estos 5 campos entre sí. */}
+      <div className="space-y-3">
+        <AuthField
+          id="nombre"
+          name="nombre"
+          label="Usuario"
+          labelClassName={compactLabelClass}
+          icon={<User size={16} />}
+          type="text"
+          autoComplete="username"
+          placeholder="Escribí tu usuario"
+          required
+        />
 
-      <AuthField
-        id="email"
-        name="email"
-        label="Email"
-        icon={<Mail size={16} />}
-        type="email"
-        autoComplete="email"
-        placeholder="Escribí tu email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+        <AuthField
+          id="email"
+          name="email"
+          label="Email"
+          labelClassName={compactLabelClass}
+          icon={<Mail size={16} />}
+          type="email"
+          autoComplete="email"
+          placeholder="Escribí tu email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-      <AuthField
-        id="confirmarEmail"
-        name="confirmarEmail"
-        label="Confirmar email"
-        icon={<Mail size={16} />}
-        type="email"
-        autoComplete="email"
-        placeholder="Repetí tu email"
-        required
-        value={confirmarEmail}
-        onChange={(e) => setConfirmarEmail(e.target.value)}
-      />
+        <AuthField
+          id="confirmarEmail"
+          name="confirmarEmail"
+          label="Confirmar email"
+          labelClassName={compactLabelClass}
+          icon={<Mail size={16} />}
+          type="email"
+          autoComplete="email"
+          placeholder="Repetí tu email"
+          required
+          value={confirmarEmail}
+          onChange={(e) => setConfirmarEmail(e.target.value)}
+        />
 
-      <AuthField
-        id="password"
-        name="password"
-        label="Contraseña"
-        icon={<Lock size={16} />}
-        type="password"
-        autoComplete="new-password"
-        minLength={8}
-        placeholder="Escribí tu contraseña"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <AuthField
+          id="password"
+          name="password"
+          label="Contraseña"
+          labelClassName={compactLabelClass}
+          icon={<Lock size={16} />}
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          placeholder="Escribí tu contraseña"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <AuthField
-        id="confirmarPassword"
-        name="confirmarPassword"
-        label="Confirmar contraseña"
-        icon={<Lock size={16} />}
-        type="password"
-        autoComplete="new-password"
-        placeholder="Repetí tu contraseña"
-        required
-        value={confirmarPassword}
-        onChange={(e) => setConfirmarPassword(e.target.value)}
-      />
+        <AuthField
+          id="confirmarPassword"
+          name="confirmarPassword"
+          label="Confirmar contraseña"
+          labelClassName={compactLabelClass}
+          icon={<Lock size={16} />}
+          type="password"
+          autoComplete="new-password"
+          placeholder="Repetí tu contraseña"
+          required
+          value={confirmarPassword}
+          onChange={(e) => setConfirmarPassword(e.target.value)}
+        />
+      </div>
 
       <input type="hidden" name="captchaToken" value={captchaToken} />
       <TurnstileWidget key={widgetKey} siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} />

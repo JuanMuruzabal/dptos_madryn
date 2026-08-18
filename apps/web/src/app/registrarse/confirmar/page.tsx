@@ -23,9 +23,7 @@ export default async function ConfirmarCuentaPage() {
 
   return (
     <AuthShell
-      eyebrow="Turismo Marcuzzi"
       title="Confirmá tu cuenta"
-      subtitle="Te mandamos un código de confirmación a tu email — ingresalo acá para activar tu cuenta."
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={<>Revisá también la carpeta de spam si no lo ves.</>}
     >
