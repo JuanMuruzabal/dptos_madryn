@@ -22,6 +22,12 @@ export default async function ConfirmarCuentaPage({ searchParams }: PageProps<"/
   const [imagenes, resolvedSearchParams] = await Promise.all([fetchImagenesSitioMap(), searchParams]);
   const emailParam = resolvedSearchParams.email;
   const email = typeof emailParam === "string" ? emailParam : "";
+  // reenviar=1 (bug real 2026-08-18): loginAction lo agrega al redirigir
+  // acá por una cuenta sin confirmar — a diferencia de venir de
+  // registerAction (que ya mandó un código recién), acá nunca se generó
+  // ninguno, así que ConfirmCodeForm tiene que pedirlo solo apenas se
+  // monta, ver su comentario.
+  const reenviarAlEntrar = resolvedSearchParams.reenviar === "1";
 
   return (
     <AuthShell
@@ -29,7 +35,7 @@ export default async function ConfirmarCuentaPage({ searchParams }: PageProps<"/
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={<>Revisá también la carpeta de spam si no lo ves.</>}
     >
-      <ConfirmCodeForm email={email} />
+      <ConfirmCodeForm email={email} reenviarAlEntrar={reenviarAlEntrar} />
     </AuthShell>
   );
 }

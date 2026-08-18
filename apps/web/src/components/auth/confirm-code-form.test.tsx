@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmCodeForm } from "./confirm-code-form";
 
@@ -79,5 +79,34 @@ describe("ConfirmCodeForm", () => {
     await user.click(screen.getByRole("button", { name: "Reenviar código" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("ocurrió un error inesperado");
+  });
+
+  // Bug real (2026-08-18): llegar acá desde /ingresar (login con una
+  // cuenta sin confirmar) nunca generó ningún código — a diferencia de
+  // venir de /registrarse, que sí manda uno recién. reenviarAlEntrar
+  // dispara el reenvío solo, sin que el usuario tenga que encontrar y
+  // apretar el botón.
+  describe("reenviarAlEntrar (2026-08-18)", () => {
+    it("con reenviarAlEntrar, dispara el reenvío solo al montarse, con el email correcto", async () => {
+      render(<ConfirmCodeForm email="ana@example.com" reenviarAlEntrar />);
+
+      await waitFor(() => expect(reenviarCodigoAction).toHaveBeenCalledTimes(1));
+      const formData = reenviarCodigoAction.mock.calls[0][1] as FormData;
+      expect(formData.get("email")).toBe("ana@example.com");
+    });
+
+    it("sin reenviarAlEntrar (default), no dispara nada solo con montarse", () => {
+      render(<ConfirmCodeForm email="ana@example.com" />);
+      expect(reenviarCodigoAction).not.toHaveBeenCalled();
+    });
+
+    it("no duplica el reenvío automático en re-renders", async () => {
+      const { rerender } = render(<ConfirmCodeForm email="ana@example.com" reenviarAlEntrar />);
+      await waitFor(() => expect(reenviarCodigoAction).toHaveBeenCalledTimes(1));
+
+      rerender(<ConfirmCodeForm email="ana@example.com" reenviarAlEntrar />);
+
+      expect(reenviarCodigoAction).toHaveBeenCalledTimes(1);
+    });
   });
 });

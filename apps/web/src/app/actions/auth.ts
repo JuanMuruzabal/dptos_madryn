@@ -175,9 +175,15 @@ export async function loginAction(
   if (!result.ok) {
     // 403 = cuenta todavía sin confirmar (Prompt 2, ver auth.go) — en vez
     // de un error genérico sin salida, mandamos directo a la pantalla de
-    // confirmación con el email ya cargado.
+    // confirmación con el email ya cargado. `reenviar=1` (bug real
+    // 2026-08-18: acá NO se acaba de generar un código nuevo — a
+    // diferencia de venir de registerAction, que sí mandó uno recién —
+    // así que sin este flag la pantalla se abría sin ningún código en
+    // camino, y "reenviar código" quedaba como el único (y no obvio)
+    // paso manual para conseguir uno) le dice a ConfirmCodeForm que
+    // dispare el reenvío solo, apenas se monta.
     if (result.status === 403) {
-      redirect(`/registrarse/confirmar?email=${encodeURIComponent(email)}`);
+      redirect(`/registrarse/confirmar?email=${encodeURIComponent(email)}&reenviar=1`);
     }
     return { error: result.error };
   }
