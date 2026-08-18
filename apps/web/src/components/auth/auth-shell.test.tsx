@@ -27,6 +27,21 @@ describe("AuthShell", () => {
     expect(link).toHaveAttribute("aria-label", "Volver al inicio");
   });
 
+  // Pedido del cliente (2026-08-18): en /registrarse/confirmar la píldora
+  // dice "Volver al login" o "Volver al registro" según de dónde vino el
+  // usuario — ConfirmarCuentaPage arma estos valores, ver su test/comentario.
+  it("con volverLabel/volverHref, los usa en vez de los defaults", () => {
+    render(
+      <AuthShell title="t" footer={null} volverLabel="Volver al login" volverHref="/ingresar">
+        <p>x</p>
+      </AuthShell>,
+    );
+    const link = screen.getByRole("link", { name: "Volver al login" });
+    expect(link).toHaveAttribute("href", "/ingresar");
+    expect(link).toHaveAttribute("aria-label", "Volver al login");
+    expect(screen.queryByText("Volver al inicio")).not.toBeInTheDocument();
+  });
+
   describe("ancho de la tarjeta (2026-08-18, pedido del cliente: 460px fijo para el register, una sola columna)", () => {
     it("sin maxWidthClassName, usa max-w-sm por default", () => {
       const { container } = render(

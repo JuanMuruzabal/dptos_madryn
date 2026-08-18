@@ -28,12 +28,21 @@ export default async function ConfirmarCuentaPage({ searchParams }: PageProps<"/
   // ninguno, así que ConfirmCodeForm tiene que pedirlo solo apenas se
   // monta, ver su comentario.
   const reenviarAlEntrar = resolvedSearchParams.reenviar === "1";
+  // Mismo flag de arriba: si vino de loginAction, "volver" tiene que ser
+  // al login (de ahí salió); si vino de registerAction, al registro
+  // (pedido del cliente, 2026-08-18: "el botón de volver al inicio debe
+  // cambiarse por volver al inicio de sesión o volver al registro...
+  // según de dónde se tome el camino a esta pestaña").
+  const volverLabel = reenviarAlEntrar ? "Volver al login" : "Volver al registro";
+  const volverHref = reenviarAlEntrar ? "/ingresar" : "/registrarse";
 
   return (
     <AuthShell
       title="Confirmá tu cuenta"
       backgroundUrl={imagenes.get(AUTH_FONDO_LOGIN_CLAVE)}
       footer={<>Revisá también la carpeta de spam si no lo ves.</>}
+      volverLabel={volverLabel}
+      volverHref={volverHref}
     >
       <ConfirmCodeForm email={email} reenviarAlEntrar={reenviarAlEntrar} />
     </AuthShell>

@@ -15,6 +15,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  document.documentElement.style.removeProperty("--header-height");
 });
 
 describe("SiteHeader", () => {
@@ -24,6 +25,28 @@ describe("SiteHeader", () => {
       render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
       expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     });
+  });
+
+  // Bug real (2026-08-18, reportado por el cliente: "las distintas
+  // páginas se ven... tapadas por el header... se soluciona
+  // refrescando"): si la sesión arranca en una ruta con el header oculto
+  // (/ingresar, /registrarse — ahora la puerta de entrada de cualquiera
+  // que loguea) y después navega a una ruta normal SIN recargar la
+  // página, --header-height tiene que terminar seteada igual — antes,
+  // con deps=[] en el useEffect del ResizeObserver, se quedaba sin medir
+  // para siempre en ese caso (SiteHeader no se desmonta al navegar).
+  it("mide el header al navegar desde una ruta con header oculto a una normal, sin recargar", () => {
+    usePathname.mockReturnValue("/ingresar");
+    const { rerender } = render(
+      <SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />,
+    );
+    expect(document.documentElement.style.getPropertyValue("--header-height")).toBe("");
+
+    usePathname.mockReturnValue("/alojamiento");
+    rerender(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
+
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(document.documentElement.style.getPropertyValue("--header-height")).not.toBe("");
   });
 
   it("fuera de la home, arranca sólido aunque no se haya scrolleado", () => {

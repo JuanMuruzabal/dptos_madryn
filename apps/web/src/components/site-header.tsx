@@ -118,6 +118,23 @@ export function SiteHeader({
   // REAL del header (se recalcula solo cuando el banner aparece/desaparece
   // o el texto envuelve distinto) y la publica como variable CSS — ninguna
   // página tiene que adivinar un número.
+  //
+  // [pathname] en vez de [] (bug real 2026-08-18, reportado por el
+  // cliente: "las distintas páginas se ven... tapadas por el header...
+  // se soluciona refrescando la página"): con deps vacías, este efecto
+  // corre UNA sola vez en la vida del componente — si esa primera vez
+  // headerRef.current era null (el usuario arrancó la sesión en
+  // /ingresar o /registrarse, donde SiteHeader no renderiza ningún
+  // <header>, ver el return null de abajo), el observer nunca se llega a
+  // armar, y como SiteHeader no se desmonta al navegar (vive en el
+  // layout raíz), tampoco vuelve a tener otra oportunidad — el sitio
+  // entero queda con el --header-height default (8rem) hasta un F5
+  // entero. Como iniciar sesión/registrarse es ahora la puerta de
+  // entrada de cualquiera que loguea, esto pegaba en casi todas las
+  // sesiones reales. Reenganchar el observer en cada cambio de ruta
+  // (headerRef.current puede pasar de null a un <header> real, o al
+  // revés) resuelve esto sin costo real: reobservar el mismo nodo DOM es
+  // inofensivo.
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -132,7 +149,7 @@ export function SiteHeader({
     const observer = new ResizeObserver(setHeightVar);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [pathname]);
 
   // /ingresar y /registrarse (2026-08-17, pedido del cliente): solo debe
   // verse la caja de login/registro, sin el header del sitio alrededor.

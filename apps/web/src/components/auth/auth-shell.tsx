@@ -28,6 +28,14 @@ interface AuthShellProps {
    * juntos) — ver register-form.tsx. /ingresar y /registrarse/confirmar
    * no la pasan y quedan como estaban. */
   maxWidthClassName?: string;
+  /** Texto y destino de la píldora "Volver..." de arriba de la tarjeta.
+   * Default: "Volver al inicio" → "/" (login y registro). Pedido del
+   * cliente (2026-08-18): en /registrarse/confirmar tiene que decir
+   * "Volver al login" o "Volver al registro" según de dónde vino el
+   * usuario — ConfirmarCuentaPage decide cuál según el origen (ver
+   * app/registrarse/confirmar/page.tsx). */
+  volverLabel?: string;
+  volverHref?: string;
 }
 
 /**
@@ -53,6 +61,8 @@ export function AuthShell({
   footer,
   backgroundUrl,
   maxWidthClassName = "max-w-sm",
+  volverLabel = "Volver al inicio",
+  volverHref = "/",
 }: AuthShellProps) {
   return (
     <main
@@ -77,12 +87,12 @@ export function AuthShell({
             .auth-submit-button/.bg-tapiz) — son los ÚNICOS colores nuevos
             de esta ronda, todo lo demás del form reusa lo existente. */}
         <Link
-          href="/"
-          aria-label="Volver al inicio"
+          href={volverHref}
+          aria-label={volverLabel}
           className="mb-4 inline-flex items-center gap-1.5 rounded-[22px] bg-[#e4f1f4] px-[15px] py-2 text-sm font-medium text-[#1c6675] transition-colors hover:bg-[#cfe4e9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c6675]"
         >
           <ArrowLeft size={16} aria-hidden />
-          Volver al inicio
+          {volverLabel}
         </Link>
 
         {eyebrow && (
