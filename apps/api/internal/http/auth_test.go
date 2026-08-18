@@ -823,14 +823,15 @@ func TestGoogle_SinNombreUsaLaParteLocalDelEmail(t *testing.T) {
 	}
 }
 
-func TestGoogle_VinculaCuentaExistentePorEmail(t *testing.T) {
+// Pedido explícito del cliente (2026-08-18, TR-055): una cuenta de Google
+// y una cuenta nativa (contraseña) que comparten el mismo email son DOS
+// cuentas separadas — Google Sign-In ya NO vincula ni reusa la cuenta
+// nativa existente, crea una propia.
+func TestGoogle_CreaCuentaSeparadaAunqueElEmailYaExistaComoNativa(t *testing.T) {
 	tx := testdb.New(t)
-	existente := crearUsuarioConfirmado(t, tx, "Ya Registrada", "vincular@example.com", "password123")
-	// Forzamos EmailConfirmado=false para confirmar que vincular por
-	// Google también la activa (además de vincular el GoogleID).
-	tx.Model(&db.Usuario{}).Where("id = ?", existente.ID).Update("email_confirmado", false)
+	nativa := crearUsuarioConfirmado(t, tx, "Ya Registrada", "separadas@example.com", "password123")
 
-	gu := googleauth.GoogleUser{Sub: "google-sub-vinculo", Email: "vincular@example.com", EmailVerified: true, Name: "Google Name"}
+	gu := googleauth.GoogleUser{Sub: "google-sub-separado", Email: "separadas@example.com", EmailVerified: true, Name: "Google Name"}
 	h := &authHandler{db: tx, jwtSecret: testSecret, google: fakeGoogleExchanger{user: gu}}
 	body := jsonBody(t, googleRequest{Code: "code"})
 	rec := httptest.NewRecorder()
@@ -839,28 +840,85 @@ func TestGoogle_VinculaCuentaExistentePorEmail(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+	var resp authResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("no se pudo parsear la respuesta: %v", err)
+	}
+
+	// Dos filas, no una — la de Google es una cuenta nueva, no la nativa.
+	var count int64
+	tx.Model(&db.Usuario{}).Where("email = ?", "separadas@example.com").Count(&count)
+	if count != 2 {
+		t.Fatalf("count = %d, esperaba 2 (nativa + Google, separadas)", count)
+	}
+	if resp.Usuario.ID == nativa.ID.String() {
+		t.Error("la cuenta de Google no debería ser la misma fila que la nativa")
+	}
+
+	var deGoogle db.Usuario
+	tx.Where("google_id = ?", "google-sub-separado").First(&deGoogle)
+	if deGoogle.ID == nativa.ID {
+		t.Error("la cuenta de Google no debería reusar el ID de la cuenta nativa")
+	}
+	if deGoogle.Nombre != "Google Name" {
+		t.Errorf("Nombre de la cuenta de Google = %q, esperaba el de Google (%q), no el de la nativa", deGoogle.Nombre, "Google Name")
+	}
+
+	// La cuenta nativa sigue intacta — Google no la tocó.
+	var nativaDespues db.Usuario
+	tx.Where("id = ?", nativa.ID).First(&nativaDespues)
+	if nativaDespues.GoogleID != nil {
+		t.Error("la cuenta nativa no debería haberse vinculado a Google")
+	}
+	if nativaDespues.Nombre != "Ya Registrada" {
+		t.Errorf("Nombre de la cuenta nativa = %q, no debería haber cambiado", nativaDespues.Nombre)
+	}
+}
+
+// El login por contraseña nunca debería poder loguear en la cuenta de
+// Google, aunque comparta email con la cuenta nativa que sí existe.
+func TestLogin_NoMatcheaUnaCuentaDeGoogleAunqueElEmailCoincida(t *testing.T) {
+	tx := testdb.New(t)
+	crearUsuarioConfirmado(t, tx, "Nativa", "ambas@example.com", "password123")
+
+	gu := googleauth.GoogleUser{Sub: "google-sub-ambas", Email: "ambas@example.com", EmailVerified: true, Name: "Google"}
+	hGoogle := &authHandler{db: tx, jwtSecret: testSecret, google: fakeGoogleExchanger{user: gu}}
+	hGoogle.google_(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/google", jsonBody(t, googleRequest{Code: "code"})))
+
+	// La contraseña de la cuenta nativa sigue siendo la única forma de
+	// loguear con ese email — la fila de Google (password aleatoria) no
+	// interfiere.
+	h := &authHandler{db: tx, jwtSecret: testSecret}
+	login := jsonBody(t, loginRequest{Email: "ambas@example.com", Password: "password123"})
+	rec := httptest.NewRecorder()
+	h.login(rec, httptest.NewRequest(http.MethodPost, "/auth/login", login))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, esperaba %d — el login con la cuenta nativa debería seguir andando", rec.Code, http.StatusOK)
+	}
+}
+
+// El registro por contraseña tiene que poder crear una cuenta nativa con
+// un email que YA existe como cuenta de Google — no es un duplicado real.
+func TestRegister_PermiteEmailQueYaExisteComoCuentaDeGoogle(t *testing.T) {
+	tx := testdb.New(t)
+	gu := googleauth.GoogleUser{Sub: "google-sub-previo", Email: "previo@example.com", EmailVerified: true, Name: "Google"}
+	hGoogle := &authHandler{db: tx, jwtSecret: testSecret, google: fakeGoogleExchanger{user: gu}}
+	hGoogle.google_(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/google", jsonBody(t, googleRequest{Code: "code"})))
+
+	h := &authHandler{db: tx, jwtSecret: testSecret}
+	req := validRegisterRequest("Nativa", "previo@example.com", "password123")
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", jsonBody(t, req)))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, esperaba %d — body: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
 
 	var count int64
-	tx.Model(&db.Usuario{}).Where("email = ?", "vincular@example.com").Count(&count)
-	if count != 1 {
-		t.Fatalf("count = %d, esperaba 1 — no debería crear una cuenta duplicada", count)
-	}
-
-	var usuario db.Usuario
-	tx.Where("email = ?", "vincular@example.com").First(&usuario)
-	if usuario.ID != existente.ID {
-		t.Error("debería reusar la cuenta existente, no crear una nueva")
-	}
-	if usuario.GoogleID == nil || *usuario.GoogleID != "google-sub-vinculo" {
-		t.Errorf("GoogleID = %v, esperaba %q", usuario.GoogleID, "google-sub-vinculo")
-	}
-	if !usuario.EmailConfirmado {
-		t.Error("vincular con Google debería confirmar la cuenta de yapa")
-	}
-	// El nombre original (elegido por el usuario al registrarse) no se
-	// pisa con el de Google — vincular no es lo mismo que sobrescribir.
-	if usuario.Nombre != "Ya Registrada" {
-		t.Errorf("Nombre = %q, no debería cambiar al vincular", usuario.Nombre)
+	tx.Model(&db.Usuario{}).Where("email = ?", "previo@example.com").Count(&count)
+	if count != 2 {
+		t.Fatalf("count = %d, esperaba 2 (Google + nativa, separadas)", count)
 	}
 }
 

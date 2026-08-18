@@ -175,8 +175,12 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// google_id IS NULL: el duplicado que importa acá es contra otra
+	// cuenta NATIVA con ese email — una cuenta de Google con el mismo
+	// email es una cuenta aparte a propósito (TR-055), nunca cuenta como
+	// "ya existe" para el registro por contraseña.
 	var existing db.Usuario
-	err := h.db.Where("email = ?", req.Email).First(&existing).Error
+	err := h.db.Where("email = ? AND google_id IS NULL", req.Email).First(&existing).Error
 	if err == nil {
 		if existing.EmailConfirmado {
 			writeError(w, http.StatusConflict, "ya existe una cuenta con ese email")
@@ -277,8 +281,10 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
+	// google_id IS NULL: login es solo para cuentas nativas (una cuenta de
+	// Google tiene una contraseña aleatoria que nadie conoce — TR-055).
 	var usuario db.Usuario
-	err := h.db.Where("email = ?", req.Email).First(&usuario).Error
+	err := h.db.Where("email = ? AND google_id IS NULL", req.Email).First(&usuario).Error
 	if err != nil {
 		// Mismo mensaje que password incorrecta: no revelar si el email existe.
 		writeError(w, http.StatusUnauthorized, "email o contraseña inválidos")
@@ -315,8 +321,10 @@ func (h *authHandler) confirmar(w http.ResponseWriter, r *http.Request) {
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	req.Codigo = strings.TrimSpace(req.Codigo)
 
+	// google_id IS NULL: solo las cuentas nativas pasan por este flujo —
+	// una cuenta de Google nunca tiene código de confirmación (TR-055).
 	var usuario db.Usuario
-	if err := h.db.Where("email = ?", req.Email).First(&usuario).Error; err != nil {
+	if err := h.db.Where("email = ? AND google_id IS NULL", req.Email).First(&usuario).Error; err != nil {
 		writeError(w, http.StatusBadRequest, "código incorrecto o vencido")
 		return
 	}
@@ -364,8 +372,10 @@ func (h *authHandler) reenviarCodigo(w http.ResponseWriter, r *http.Request) {
 
 	const mensaje = "si el email existe y no fue confirmado todavía, te mandamos un código nuevo"
 
+	// google_id IS NULL: solo las cuentas nativas tienen código para
+	// reenviar — una cuenta de Google ya está confirmada de entrada (TR-055).
 	var usuario db.Usuario
-	err := h.db.Where("email = ?", req.Email).First(&usuario).Error
+	err := h.db.Where("email = ? AND google_id IS NULL", req.Email).First(&usuario).Error
 	if err != nil || usuario.EmailConfirmado {
 		writeJSON(w, http.StatusOK, map[string]string{"mensaje": mensaje})
 		return
@@ -442,19 +452,13 @@ func (h *authHandler) buscarOCrearUsuarioGoogle(gu googleauth.GoogleUser, emailN
 		return db.Usuario{}, err
 	}
 
-	err = h.db.Where("email = ?", emailNormalizado).First(&usuario).Error
-	if err == nil {
-		usuario.GoogleID = &gu.Sub
-		usuario.EmailConfirmado = true
-		if err := h.db.Save(&usuario).Error; err != nil {
-			return db.Usuario{}, err
-		}
-		return usuario, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return db.Usuario{}, err
-	}
-
+	// SIEMPRE se crea una cuenta nueva acá — nunca se vincula a una cuenta
+	// nativa (contraseña) existente aunque comparta el mismo email
+	// (2026-08-18, pedido explícito del cliente: "la cuenta de google
+	// debera ser otra cuenta separada a la nativa... podran compartir
+	// mail pero no deben ser la misma", TR-055). El índice único de email
+	// es parcial (WHERE google_id IS NULL, ver migrate.go) así que esto
+	// no choca con una cuenta nativa que ya tenga el mismo email.
 	passwordAleatoria, err := generarPasswordHashAleatoria()
 	if err != nil {
 		return db.Usuario{}, err

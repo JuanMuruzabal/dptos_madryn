@@ -12,11 +12,18 @@ import (
 
 // Usuario refleja la entidad USUARIO del ERD.
 type Usuario struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Nombre       string    `gorm:"type:varchar(150);not null"`
-	Email        string    `gorm:"type:varchar(255);uniqueIndex;not null"`
-	PasswordHash string    `gorm:"column:password_hash;type:varchar(255);not null"`
-	Telefono     *string   `gorm:"type:varchar(50)"`
+	ID     uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Nombre string    `gorm:"type:varchar(150);not null"`
+	// Email: SIN uniqueIndex acá a propósito (2026-08-18, pedido explícito
+	// del cliente) — una cuenta de Google y una cuenta nativa (contraseña)
+	// pueden compartir el mismo email sin ser la misma cuenta. La
+	// unicidad real es un índice único PARCIAL sobre (email) WHERE
+	// google_id IS NULL — como máximo una cuenta NATIVA por email, pero
+	// sin restricción entre una nativa y una de Google (ver migrate.go,
+	// idx_usuarios_email_nativo).
+	Email        string  `gorm:"type:varchar(255);not null"`
+	PasswordHash string  `gorm:"column:password_hash;type:varchar(255);not null"`
+	Telefono     *string `gorm:"type:varchar(50)"`
 	// rol: 'cliente' | 'administrador' (spec §4.5).
 	Rol string `gorm:"type:varchar(20);not null;default:cliente;check:rol IN ('cliente','administrador')"`
 

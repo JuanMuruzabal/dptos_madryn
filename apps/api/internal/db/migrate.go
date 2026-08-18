@@ -66,6 +66,25 @@ func RunMigrations(gdb *gorm.DB) error {
 		   WHEN duplicate_object THEN NULL;
 		   WHEN duplicate_table THEN NULL;
 		 END $$`,
+
+		// Cuentas de Google separadas de las nativas aunque compartan email
+		// (2026-08-18, pedido explícito del cliente — ver TR-055 en
+		// docs/tradeoffs.md). El modelo Usuario ya no declara `uniqueIndex`
+		// en Email (ver models.go) — GORM AutoMigrate nunca borra un índice
+		// que dejó de estar en el tag, así que en cualquier base que ya
+		// corrió antes con el uniqueIndex viejo (incluida producción) hay
+		// que borrarlo a mano acá antes de crear el reemplazo parcial.
+		// idx_usuarios_email es el nombre por default que le da la
+		// naming strategy de GORM a `uniqueIndex` sin nombre explícito
+		// (idx_<tabla>_<columna>).
+		`DROP INDEX IF EXISTS idx_usuarios_email`,
+
+		// Como máximo UNA cuenta nativa (google_id IS NULL) por email —
+		// pero sin restricción entre una cuenta nativa y una de Google que
+		// compartan el mismo email, esas SÍ pueden coexistir como cuentas
+		// separadas.
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_email_nativo
+		   ON usuarios (email) WHERE google_id IS NULL`,
 	}
 
 	for _, stmt := range statements {
