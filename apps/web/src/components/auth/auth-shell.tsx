@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { AUTH_FONDO_LOGIN_GRADIENT } from "@/lib/auth-fondo";
 
 interface AuthShellProps {
@@ -46,33 +47,36 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, backgrou
         } as CSSProperties
       }
     >
-      {/* Volver al home (2026-08-17, pedido del cliente): con el header
-          global oculto en estas rutas (ver site-header.tsx), esto es lo
-          único que permite salir de vuelta a "/". "Header invisible" a
-          propósito — sin fondo/caja propia (ver site-header.tsx real, que
-          SÍ tiene bg-ink/bg-transparent), acá el texto queda directo sobre
-          la foto de fondo. position:fixed (no absolute) para que siga
-          alcanzable aunque el formulario de registro sea largo y haya que
-          scrollear. Compacto en mobile (menos padding, texto más chico) —
-          pedido explícito del cliente porque ahí el espacio arriba es
-          reducido. text-shadow en vez de un fondo propio, para que siga
-          legible sobre cualquier foto sin dejar de ser "invisible". */}
-      <Link
-        href="/"
-        className="fixed inset-x-0 top-0 z-20 px-4 py-3 font-display text-sm text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.55)] sm:px-6 sm:py-4 sm:text-lg"
-      >
-        ALOJAMIENTOS MADRYN
-      </Link>
-
       {/* Sin header/footer del sitio en estas rutas (2026-08-17, pedido del
           cliente: "solo la box de inicio de sesión o registro") — ver
           site-header.tsx/site-footer-visibility.tsx. Tarjeta más compacta
           (padding y márgenes reducidos, mismo pedido: "muy larga"). */}
       <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(18,51,59,0.25)] sm:p-7">
+        {/* Volver al home (2026-08-18, pedido del cliente: reemplaza el
+            título "ALOJAMIENTOS MADRYN" superpuesto en la esquina, que ya
+            no va) — adentro de la tarjeta, arriba de todo, por encima del
+            título. Colores puntuales de este pedido (#e4f1f4/#1c6675), no
+            tokens del sistema de diseño (mismo criterio que
+            .auth-submit-button/.bg-tapiz) — son los ÚNICOS colores nuevos
+            de esta ronda, todo lo demás del form reusa lo existente. */}
+        <Link
+          href="/"
+          aria-label="Volver al inicio"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-[22px] bg-[#e4f1f4] px-[15px] py-2 text-sm font-medium text-[#1c6675] transition-colors hover:bg-[#cfe4e9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c6675]"
+        >
+          <ArrowLeft size={16} aria-hidden />
+          Volver al inicio
+        </Link>
+
         {eyebrow && (
           <p className="mb-1.5 text-center text-xs font-semibold tracking-wide text-ink-soft/80">{eyebrow}</p>
         )}
-        <h1 className="text-center text-2xl font-extrabold text-ink">{title}</h1>
+        {/* text-xl en mobile, text-2xl desde sm: (2026-08-18, pedido del
+            cliente: compactar el registro en mobile sin tocar desktop) —
+            comparte AuthShell con /ingresar y /registrarse/confirmar, así
+            que el mismo ajuste aplica a las 3 pantallas por consistencia
+            (todas tienen el mismo problema de tamaño en mobile). */}
+        <h1 className="text-center text-xl font-extrabold text-ink sm:text-2xl">{title}</h1>
         {subtitle && <p className="mt-1.5 text-center text-sm text-ink-soft">{subtitle}</p>}
 
         <div className="mt-5">{children}</div>

@@ -28,12 +28,16 @@ function mockFetchOnce(status: number, body: unknown, ok = status >= 200 && stat
   } as unknown as Response);
 }
 
-// Campos válidos completos (2026-08-17, TR-048: Usuario/Email/Confirmar
-// email/Contraseña/Confirmar contraseña/captchaToken) — el helper evita
-// repetir los 6 campos en cada test que solo quiere variar uno.
+// Campos válidos completos (2026-08-18, TR-048: Nombre/Apellido/Email/
+// Confirmar email/Teléfono/Contraseña/Confirmar contraseña/captchaToken)
+// — el helper evita repetir todos los campos en cada test que solo
+// quiere variar uno. telefonoCodigo/telefonoNumero quedan vacíos por
+// default (el teléfono es opcional), como si el usuario no lo hubiera
+// tocado.
 function registroValido(overrides: Record<string, string> = {}): Record<string, string> {
   return {
     nombre: "Ana",
+    apellido: "Pérez",
     email: "a@b.com",
     confirmarEmail: "a@b.com",
     password: "password123",
@@ -44,10 +48,16 @@ function registroValido(overrides: Record<string, string> = {}): Record<string, 
 }
 
 describe("registerAction", () => {
-  it("rechaza sin usuario", async () => {
+  it("rechaza sin nombre", async () => {
     const { registerAction } = await import("./auth");
     const resultado = await registerAction({}, formData(registroValido({ nombre: "" })));
-    expect(resultado.error).toMatch(/usuario/i);
+    expect(resultado.error).toMatch(/nombre/i);
+  });
+
+  it("rechaza sin apellido", async () => {
+    const { registerAction } = await import("./auth");
+    const resultado = await registerAction({}, formData(registroValido({ apellido: "" })));
+    expect(resultado.error).toMatch(/apellido/i);
   });
 
   it("rechaza un email sin @", async () => {
@@ -120,7 +130,7 @@ describe("registerAction", () => {
     expect(body.captchaToken).toBe("token-real");
   });
 
-  it("el teléfono es opcional (y confirmarEmail/confirmarPassword no viajan al backend)", async () => {
+  it("el teléfono es opcional (y confirmarEmail/confirmarPassword/apellido/telefonoCodigo/telefonoNumero sueltos no viajan al backend)", async () => {
     mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana", email: "a@b.com", rol: "cliente" }, token: "t" });
     const { registerAction } = await import("./auth");
 
@@ -130,6 +140,43 @@ describe("registerAction", () => {
     expect(body.telefono).toBeUndefined();
     expect(body.confirmarEmail).toBeUndefined();
     expect(body.confirmarPassword).toBeUndefined();
+    expect(body.apellido).toBeUndefined();
+    expect(body.telefonoCodigo).toBeUndefined();
+    expect(body.telefonoNumero).toBeUndefined();
+  });
+
+  it("combina nombre + apellido en un solo campo nombre para el backend (2026-08-18)", async () => {
+    mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana Pérez", email: "a@b.com", rol: "cliente" }, token: "t" });
+    const { registerAction } = await import("./auth");
+
+    await expect(registerAction({}, formData(registroValido()))).rejects.toThrow();
+
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1]?.body as string) ?? "{}");
+    expect(body.nombre).toBe("Ana Pérez");
+  });
+
+  it("une código de país + número en formato internacional para telefono (2026-08-18)", async () => {
+    mockFetchOnce(201, { usuario: { id: "u-1", nombre: "Ana", email: "a@b.com", rol: "cliente" }, token: "t" });
+    const { registerAction } = await import("./auth");
+
+    await expect(
+      registerAction(
+        {},
+        formData(registroValido({ telefonoCodigo: "+54", telefonoNumero: "2804123456" })),
+      ),
+    ).rejects.toThrow();
+
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1]?.body as string) ?? "{}");
+    expect(body.telefono).toBe("+542804123456");
+  });
+
+  it("rechaza un teléfono con formato inválido (no solo dígitos, o muy corto)", async () => {
+    const { registerAction } = await import("./auth");
+    const resultado = await registerAction(
+      {},
+      formData(registroValido({ telefonoCodigo: "+54", telefonoNumero: "123" })),
+    );
+    expect(resultado.error).toMatch(/teléfono válido/i);
   });
 });
 

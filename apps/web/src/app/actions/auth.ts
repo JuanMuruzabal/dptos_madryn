@@ -37,24 +37,44 @@ async function postAuth(
   return { ok: true, data };
 }
 
+// Solo dígitos, longitud razonable — mismo regex que RegisterForm valida
+// en el cliente (register-form.tsx); repetido acá como defensa en
+// profundidad (2026-08-18), igual criterio que el resto de esta función.
+const TELEFONO_REGEX = /^\d{6,14}$/;
+
 export async function registerAction(
   _prevState: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  // Nombre y Apellido viajan separados en el form (2026-08-18, mejor UX
+  // que un solo campo largo) pero el backend Go sigue teniendo un único
+  // campo `nombre` — se combinan acá, no hay columna `apellido` nueva en
+  // el modelo de datos (mismo criterio ya usado para "Usuario"→nombre en
+  // TR-048).
   const nombre = String(formData.get("nombre") ?? "").trim();
+  const apellido = String(formData.get("apellido") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const confirmarEmail = String(formData.get("confirmarEmail") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirmarPassword = String(formData.get("confirmarPassword") ?? "");
-  const telefono = String(formData.get("telefono") ?? "").trim();
+  // Ídem nombre/apellido: código de país + número viajan separados (un
+  // <select> propio) y se unen acá en formato internacional antes de
+  // mandarlo — el backend sigue recibiendo un solo string en `telefono`.
+  const telefonoCodigo = String(formData.get("telefonoCodigo") ?? "").trim();
+  const telefonoNumero = String(formData.get("telefonoNumero") ?? "").trim();
   const captchaToken = String(formData.get("captchaToken") ?? "");
 
-  if (!nombre) return { error: "Ingresá tu usuario." };
+  if (!nombre) return { error: "Ingresá tu nombre." };
+  if (!apellido) return { error: "Ingresá tu apellido." };
   if (!email.includes("@")) return { error: "Ingresá un email válido." };
   // Defensa en profundidad (TR-048) — RegisterForm ya valida esto mismo
   // en el cliente antes de dejar que el form se envíe; esto cubre el caso
   // de alguien pegándole directo a la Server Action sin pasar por esa UI.
   if (email !== confirmarEmail) return { error: "Los emails no coinciden." };
+  // El teléfono es opcional — solo se valida el formato si mandó un número.
+  if (telefonoNumero && !TELEFONO_REGEX.test(telefonoNumero)) {
+    return { error: "Ingresá un teléfono válido (solo números)." };
+  }
   if (password.length < MIN_PASSWORD_LEN) {
     return { error: `La contraseña debe tener al menos ${MIN_PASSWORD_LEN} caracteres.` };
   }
@@ -65,10 +85,10 @@ export async function registerAction(
   if (!captchaToken) return { error: "Completá la verificación anti-bot." };
 
   const result = await postAuth("/auth/register", {
-    nombre,
+    nombre: `${nombre} ${apellido}`.trim(),
     email,
     password,
-    telefono: telefono || undefined,
+    telefono: telefonoNumero ? `${telefonoCodigo}${telefonoNumero}` : undefined,
     captchaToken,
   });
 

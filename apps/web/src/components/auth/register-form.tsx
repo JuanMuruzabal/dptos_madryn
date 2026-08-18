@@ -1,19 +1,56 @@
 "use client";
 
 import { useActionState, useState, type FormEvent } from "react";
-import { Lock, Mail, User } from "lucide-react";
+import { Lock, Mail, Phone, User } from "lucide-react";
 import { registerAction, type AuthFormState } from "@/app/actions/auth";
-import { AuthField, authSubmitClass } from "@/components/auth/auth-shell";
+import {
+  AuthField,
+  authFieldIconClass,
+  authFieldWrapClass,
+  authInputClass,
+  authSubmitClass,
+} from "@/components/auth/auth-shell";
 import { GoogleIcon } from "@/components/auth/google-icon";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const initialState: AuthFormState = {};
 
-// Espaciado más ajustado label→input (2026-08-17, pedido puntual del
-// cliente: "la etiqueta debe quedar más pegada a su propio input" — SOLO
-// en este form, ver AuthField/authLabelClass en auth-shell.tsx, que no
-// cambian para LoginForm/ConfirmCodeForm).
-const compactLabelClass = "mb-0.5 block text-sm font-medium text-ink";
+// Espaciado más ajustado label→input, y label más chico en mobile
+// (2026-08-17/18, pedido puntual del cliente: "la etiqueta debe quedar
+// más pegada a su propio input"/"reducí el tamaño... de los labels...
+// cuando la pantalla es chica") — SOLO en este form, ver AuthField/
+// authLabelClass en auth-shell.tsx, que no cambian para LoginForm/
+// ConfirmCodeForm. text-sm (el tamaño de siempre) recién desde sm:, así
+// desktop queda idéntico a como estaba.
+const compactLabelClass = "mb-0.5 block text-xs font-medium text-ink sm:text-sm";
+
+// Prefijos de país para el teléfono (2026-08-18, pedido del cliente) —
+// +54 Argentina primero y seleccionado por default (el grueso de los
+// huéspedes), el resto en el orden que pidió más un par de vecinos
+// típicos de un sitio de turismo en Patagonia.
+const CODIGOS_PAIS = [
+  { code: "+54", pais: "Argentina" },
+  { code: "+1", pais: "EE.UU./Canadá" },
+  { code: "+55", pais: "Brasil" },
+  { code: "+34", pais: "España" },
+  { code: "+56", pais: "Chile" },
+  { code: "+598", pais: "Uruguay" },
+  { code: "+595", pais: "Paraguay" },
+  { code: "+51", pais: "Perú" },
+  { code: "+57", pais: "Colombia" },
+  { code: "+52", pais: "México" },
+];
+
+// Mismo criterio visual que authInputClass (línea inferior, sin caja) —
+// sin el padding-left de authInputClass porque este <select> no lleva
+// ícono adentro.
+const phoneCodeSelectClass =
+  "w-[6.75rem] shrink-0 border-0 border-b border-ink/15 bg-transparent py-2 text-sm text-ink focus:border-tide focus:outline-none";
+
+// Solo dígitos, longitud razonable (2026-08-18, pedido del cliente) — el
+// mismo rango sirve para cualquier país de CODIGOS_PAIS (de 6 dígitos en
+// números cortos hasta 14, margen de sobra para números largos reales).
+const TELEFONO_REGEX = /^\d{6,14}$/;
 
 // Site key pública de Turnstile (TR-047) — el fallback es la site key de
 // PRUEBA pública de Cloudflare (siempre aprueba), así el registro funciona
@@ -22,26 +59,25 @@ const compactLabelClass = "mb-0.5 block text-sm font-medium text-ink";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
 
 /**
- * Rediseño 2026-08-17 (TR-048): Usuario/Email/Confirmar email/Contraseña/
- * Confirmar contraseña + CAPTCHA. "Usuario" es el mismo campo `nombre` de
- * siempre relabeleado (igual que en LoginForm, ver su comentario) — no hay
- * username separado en el modelo de datos. "Confirmar email"/"Confirmar
- * contraseña" son SOLO validación de UI (evitar un typo antes de mandar el
- * form) — no viajan al backend Go, que sigue recibiendo nombre/email/
- * password como siempre; si no coinciden entre sí, el propio
- * registerAction (Server Action) los vuelve a chequear como defensa en
- * profundidad, no solo acá.
- *
- * El teléfono (opcional, T3.5) sale del formulario visible a pedido del
- * cliente — el campo del backend sigue existiendo y acepta que quede
- * vacío, no se perdió capacidad del modelo de datos, solo dejó de
- * pedirse en el alta.
+ * Rediseño 2026-08-17/18 (TR-048): Nombre+Apellido/Email/Confirmar email/
+ * Teléfono/Contraseña/Confirmar contraseña + CAPTCHA. Nombre/Apellido
+ * viajan SEPARADOS en el form (mejor UX, dos inputs cortos en vez de uno
+ * largo) pero el backend Go sigue teniendo un solo campo `nombre` — se
+ * combinan recién en registerAction (Server Action), no hay columna
+ * `apellido` nueva en el modelo de datos. Mismo criterio para el
+ * teléfono: acá son dos inputs (código de país + número), registerAction
+ * los une en un solo string en formato internacional antes de mandarlo.
+ * "Confirmar email"/"Confirmar contraseña" son SOLO validación de UI
+ * (evitar un typo antes de mandar el form) — no viajan al backend; si no
+ * coinciden entre sí, el propio registerAction los vuelve a chequear como
+ * defensa en profundidad, no solo acá.
  */
 export function RegisterForm() {
   const [state, action, pending] = useActionState(registerAction, initialState);
 
   const [email, setEmail] = useState("");
   const [confirmarEmail, setConfirmarEmail] = useState("");
+  const [telefonoNumero, setTelefonoNumero] = useState("");
   const [password, setPassword] = useState("");
   const [confirmarPassword, setConfirmarPassword] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
@@ -71,6 +107,12 @@ export function RegisterForm() {
       setClientError("Los emails no coinciden.");
       return;
     }
+    // El teléfono es opcional — solo se valida el formato si escribió algo.
+    if (telefonoNumero && !TELEFONO_REGEX.test(telefonoNumero)) {
+      e.preventDefault();
+      setClientError("Ingresá un teléfono válido (solo números).");
+      return;
+    }
     if (password !== confirmarPassword) {
       e.preventDefault();
       setClientError("Las contraseñas no coinciden.");
@@ -82,24 +124,43 @@ export function RegisterForm() {
   const error = clientError ?? state.error;
 
   return (
-    <form action={action} onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form action={action} onSubmit={onSubmit} className="space-y-3 sm:space-y-4" noValidate>
       {/* Grupo aparte con su propio espaciado, más chico y uniforme que el
           del resto del form (2026-08-17, pedido del cliente: "la
           separación entre un campo y el siguiente debe ser uniforme y más
           chica") — así el resto del form (captcha, botón, divisor, Google)
-          no cambia su espaciado, solo estos 5 campos entre sí. */}
-      <div className="space-y-3">
-        <AuthField
-          id="nombre"
-          name="nombre"
-          label="Usuario"
-          labelClassName={compactLabelClass}
-          icon={<User size={16} />}
-          type="text"
-          autoComplete="username"
-          placeholder="Escribí tu usuario"
-          required
-        />
+          no cambia su espaciado, solo estos campos entre sí. Más ajustado
+          todavía en mobile (space-y-2, 2026-08-18: "compactá el formulario
+          para mobile"), space-y-3 desde sm: para que desktop no cambie. */}
+      <div className="space-y-2 sm:space-y-3">
+        {/* Nombre + Apellido en fila de 2 columnas (2026-08-18, pedido del
+            cliente: reemplaza el campo único "Usuario") — 1 sola columna
+            en pantallas angostas (default, mobile-first), 2 desde sm:. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+          <AuthField
+            id="nombre"
+            name="nombre"
+            label="Nombre"
+            labelClassName={compactLabelClass}
+            icon={<User size={16} />}
+            type="text"
+            autoComplete="given-name"
+            placeholder="Tu nombre"
+            required
+          />
+
+          <AuthField
+            id="apellido"
+            name="apellido"
+            label="Apellido"
+            labelClassName={compactLabelClass}
+            icon={<User size={16} />}
+            type="text"
+            autoComplete="family-name"
+            placeholder="Tu apellido"
+            required
+          />
+        </div>
 
         <AuthField
           id="email"
@@ -128,6 +189,48 @@ export function RegisterForm() {
           value={confirmarEmail}
           onChange={(e) => setConfirmarEmail(e.target.value)}
         />
+
+        {/* Teléfono: código de país + número, opcional (2026-08-18, pedido
+            del cliente) — se unen en formato internacional recién en
+            registerAction (ver comentario del componente, arriba). */}
+        <div>
+          <label htmlFor="telefonoNumero" className={compactLabelClass}>
+            Teléfono
+          </label>
+          <div className="flex gap-2">
+            <select
+              id="telefonoCodigo"
+              name="telefonoCodigo"
+              defaultValue="+54"
+              aria-label="Código de país"
+              className={phoneCodeSelectClass}
+            >
+              {CODIGOS_PAIS.map(({ code, pais }) => (
+                <option key={code} value={code}>
+                  {code} {pais}
+                </option>
+              ))}
+            </select>
+            <div className={`${authFieldWrapClass} flex-1`}>
+              <span className={authFieldIconClass} aria-hidden>
+                <Phone size={16} />
+              </span>
+              <input
+                id="telefonoNumero"
+                name="telefonoNumero"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="tel-national"
+                placeholder="2804123456"
+                className={authInputClass}
+                value={telefonoNumero}
+                onChange={(e) => setTelefonoNumero(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-ink-soft">Código de área + número, sin el 0 ni el 15.</p>
+        </div>
 
         <AuthField
           id="password"

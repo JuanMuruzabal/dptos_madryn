@@ -16,13 +16,15 @@ describe("AuthShell", () => {
     expect(screen.getByText("¿Sos nuevo?")).toBeInTheDocument();
   });
 
-  it("muestra un link para volver al home (2026-08-17, pedido del cliente — sin header global en estas rutas)", () => {
+  it("muestra la píldora 'Volver al inicio' adentro de la tarjeta, arriba del título (2026-08-18, pedido del cliente)", () => {
     render(
-      <AuthShell eyebrow="e" title="t" subtitle="s" footer={null}>
+      <AuthShell title="t" footer={null}>
         <p>x</p>
       </AuthShell>,
     );
-    expect(screen.getByRole("link", { name: "ALOJAMIENTOS MADRYN" })).toHaveAttribute("href", "/");
+    const link = screen.getByRole("link", { name: "Volver al inicio" });
+    expect(link).toHaveAttribute("href", "/");
+    expect(link).toHaveAttribute("aria-label", "Volver al inicio");
   });
 
   describe("fondo con foto (2026-08-17, TR-048)", () => {
