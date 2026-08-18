@@ -8,7 +8,11 @@ import { TurnstileWidget } from "./turnstile-widget";
 // "el script ya cargó" (mismo momento en que el componente real
 // dispararía window.turnstile.render()).
 vi.mock("next/script", () => ({
-  default: ({ onReady }: { onReady?: () => void }) => {
+  // Nombrada (no una arrow anónima) a propósito: asignada a la key
+  // "default" (lowercase), eslint-plugin-react-hooks infiere el nombre
+  // del componente de esa key y rechaza el useEffect de adentro por no
+  // empezar con mayúscula si se deja anónima.
+  default: function MockScript({ onReady }: { onReady?: () => void }) {
     useEffect(() => {
       onReady?.();
     }, [onReady]);
