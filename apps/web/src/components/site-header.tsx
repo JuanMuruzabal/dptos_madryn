@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bed, Car, Compass, Mail, Map } from "lucide-react";
+import { isAuthChromeHidden } from "@/lib/auth-routes";
 
 const NAV_LINKS = [
   { href: "/alojamiento", label: "Alojamiento", mobileLabel: "Alojamiento", Icon: Bed },
@@ -132,6 +133,16 @@ export function SiteHeader({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // /ingresar y /registrarse (2026-08-17, pedido del cliente): solo debe
+  // verse la caja de login/registro, sin el header del sitio alrededor.
+  // Se chequea DESPUÉS de todos los hooks de arriba (nunca antes de un
+  // hook — violaría las Rules of Hooks) — los efectos ya declarados
+  // manejan bien el caso headerRef.current === null cuando esto no
+  // renderiza ningún <header>.
+  if (isAuthChromeHidden(pathname)) {
+    return null;
+  }
 
   // El menú mobile abierto siempre se ve sobre fondo sólido, así que
   // forzamos esa variante de color mientras está abierto.

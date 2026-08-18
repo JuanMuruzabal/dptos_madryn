@@ -31,7 +31,7 @@ interface AuthShellProps {
 export function AuthShell({ eyebrow, title, subtitle, children, footer, backgroundUrl }: AuthShellProps) {
   return (
     <main
-      className="auth-fondo-blur relative isolate flex flex-1 items-center justify-center overflow-hidden px-4 py-16 sm:px-6"
+      className="auth-fondo-blur relative isolate flex flex-1 items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
       style={
         {
           "--auth-bg-image": backgroundUrl ? `url(${JSON.stringify(backgroundUrl)})` : "none",
@@ -39,14 +39,18 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, backgrou
         } as CSSProperties
       }
     >
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 shadow-[0_20px_60px_rgba(18,51,59,0.25)] sm:p-9">
-        <p className="mb-2 text-center text-xs font-semibold tracking-wide text-ink-soft/80">{eyebrow}</p>
-        <h1 className="text-center text-2xl font-extrabold text-ink sm:text-3xl">{title}</h1>
-        <p className="mt-2 text-center text-sm text-ink-soft">{subtitle}</p>
+      {/* Sin header/footer del sitio en estas rutas (2026-08-17, pedido del
+          cliente: "solo la box de inicio de sesión o registro") — ver
+          site-header.tsx/site-footer-visibility.tsx. Tarjeta más compacta
+          (padding y márgenes reducidos, mismo pedido: "muy larga"). */}
+      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(18,51,59,0.25)] sm:p-7">
+        <p className="mb-1.5 text-center text-xs font-semibold tracking-wide text-ink-soft/80">{eyebrow}</p>
+        <h1 className="text-center text-2xl font-extrabold text-ink">{title}</h1>
+        <p className="mt-1.5 text-center text-sm text-ink-soft">{subtitle}</p>
 
-        <div className="mt-7">{children}</div>
+        <div className="mt-5">{children}</div>
 
-        <p className="mt-6 text-center text-sm text-ink-soft">{footer}</p>
+        <p className="mt-4 text-center text-sm text-ink-soft">{footer}</p>
       </div>
     </main>
   );
@@ -62,17 +66,15 @@ export const authFieldWrapClass = "relative";
 export const authFieldIconClass =
   "pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-ink-soft/60";
 export const authInputClass =
-  "w-full border-0 border-b border-ink/15 bg-transparent py-2.5 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-tide focus:outline-none";
+  "w-full border-0 border-b border-ink/15 bg-transparent py-2 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-tide focus:outline-none";
 
-export const authLabelClass = "mb-1.5 block text-sm font-medium text-ink";
+export const authLabelClass = "mb-1 block text-sm font-medium text-ink";
 
-/** Botón principal con gradiente turquesa/verde → magenta/violeta
- * (2026-08-17, pedido del cliente, hex exactos en globals.css
- * .auth-gradient-button — mismo criterio que .bg-tapiz: un color puntual
- * de un pedido concreto, no un token del sistema de diseño del resto del
- * sitio). */
+/** Botón principal en el coral de marca (2026-08-17, pedido del cliente:
+ * "un color más propio de la página" — reemplaza el gradiente turquesa/
+ * magenta original, ver .auth-submit-button en globals.css y TR-048). */
 export const authSubmitClass =
-  "auth-gradient-button w-full rounded-full px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60";
+  "auth-submit-button w-full rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60";
 
 /** Campo completo: label + ícono + input, en un solo lugar para no repetir
  * el layout icono-adentro-del-input en cada form. */

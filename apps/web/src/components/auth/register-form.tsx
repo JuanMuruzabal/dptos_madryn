@@ -76,7 +76,7 @@ export function RegisterForm() {
   const error = clientError ?? state.error;
 
   return (
-    <form action={action} onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form action={action} onSubmit={onSubmit} className="space-y-4" noValidate>
       <AuthField
         id="nombre"
         name="nombre"
@@ -168,7 +168,7 @@ export function RegisterForm() {
           en login-form.tsx. */}
       <button
         type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-3 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
       >
         <GoogleIcon />
         Ingresá con Google

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Lock, User } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { loginAction, type AuthFormState } from "@/app/actions/auth";
 import { AuthField, authSubmitClass } from "@/components/auth/auth-shell";
 import { GoogleIcon } from "@/components/auth/google-icon";
@@ -10,28 +10,23 @@ import { GoogleIcon } from "@/components/auth/google-icon";
 const initialState: AuthFormState = {};
 
 /**
- * Rediseño 2026-08-17 (TR-048) — el campo sigue siendo el email de
- * siempre (name="email", el backend no cambia en esta ronda), con la
- * etiqueta "Usuario" nomás porque así lo pidió el cliente para esta
- * pantalla puntual — no hay un campo de username separado en el modelo de
- * datos (Usuario no tiene esa columna), así que relabelear el email
- * existente es lo que no requiere tocar la lógica de login (eso queda
- * para el Prompt 2, rama feature/, si en algún momento hace falta un
- * username de verdad).
+ * Rediseño 2026-08-17 (TR-048). Campo "Email" (no "Usuario" — aclarado
+ * por el cliente: el login es mail + contraseña, no usuario + contraseña;
+ * "Usuario" queda solo en RegisterForm, que sí lo pide como campo propio).
  */
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialState);
 
   return (
-    <form action={action} className="space-y-6" noValidate>
+    <form action={action} className="space-y-4" noValidate>
       <AuthField
         id="email"
         name="email"
-        label="Usuario"
-        icon={<User size={16} />}
+        label="Email"
+        icon={<Mail size={16} />}
         type="email"
         autoComplete="email"
-        placeholder="Escribí tu usuario"
+        placeholder="Escribí tu email"
         required
       />
 
@@ -76,7 +71,7 @@ export function LoginForm() {
           el Prompt 2, en su propia rama feature/. */}
       <button
         type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-3 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
       >
         <GoogleIcon />
         Ingresá con Google

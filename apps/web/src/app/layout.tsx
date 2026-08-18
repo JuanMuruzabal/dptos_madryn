@@ -4,6 +4,7 @@ import { Nunito_Sans, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteFooterVisibility } from "@/components/site-footer-visibility";
 import { AccountStatus, AccountStatusFallback } from "@/components/account-status";
 import { PendingReservaBanner } from "@/components/pending-reserva-banner";
 import { EsperandoConfirmacionBanner } from "@/components/esperando-confirmacion-banner";
@@ -113,7 +114,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           notificationsSlot={notificationsSlot}
         />
         {children}
-        <SiteFooter />
+        <SiteFooterVisibility>
+          <SiteFooter />
+        </SiteFooterVisibility>
       </body>
     </html>
   );

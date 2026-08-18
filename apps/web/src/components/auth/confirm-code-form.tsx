@@ -22,7 +22,7 @@ export function ConfirmCodeForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-4">
       <AuthField
         id="codigo"
         name="codigo"

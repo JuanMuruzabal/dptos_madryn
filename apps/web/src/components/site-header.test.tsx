@@ -18,6 +18,14 @@ afterEach(() => {
 });
 
 describe("SiteHeader", () => {
+  describe("oculto en /ingresar y /registrarse (2026-08-17, pedido del cliente)", () => {
+    it.each(["/ingresar", "/registrarse", "/registrarse/confirmar"])("no renderiza nada en %s", (ruta) => {
+      usePathname.mockReturnValue(ruta);
+      render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);
+      expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    });
+  });
+
   it("fuera de la home, arranca sólido aunque no se haya scrolleado", () => {
     usePathname.mockReturnValue("/alojamiento");
     render(<SiteHeader accountSlot={null} accountSlotMobile={null} bannerSlot={null} notificationsSlot={null} />);

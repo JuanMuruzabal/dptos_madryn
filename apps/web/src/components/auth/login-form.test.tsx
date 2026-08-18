@@ -12,13 +12,14 @@ beforeEach(() => {
 });
 
 describe("LoginForm", () => {
-  it("renderiza los campos de usuario y contraseña (TR-048)", () => {
+  it("renderiza los campos de email y contraseña, no 'Usuario' (TR-048)", () => {
     render(<LoginForm />);
-    // "Usuario" sigue siendo el input de email de siempre, solo
-    // relabeleado — ver el comentario en login-form.tsx.
-    const usuario = screen.getByLabelText("Usuario");
-    expect(usuario).toHaveAttribute("type", "email");
-    expect(usuario).toHaveAttribute("name", "email");
+    // Aclarado por el cliente: el login es mail + contraseña, no usuario +
+    // contraseña ("Usuario" queda solo en RegisterForm).
+    const email = screen.getByLabelText("Email");
+    expect(email).toHaveAttribute("type", "email");
+    expect(email).toHaveAttribute("name", "email");
+    expect(screen.queryByLabelText("Usuario")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
   });
 
@@ -36,7 +37,7 @@ describe("LoginForm", () => {
     loginAction.mockResolvedValue({ error: "Email o contraseña incorrectos." });
     const user = userEvent.setup();
     render(<LoginForm />);
-    await user.type(screen.getByLabelText("Usuario"), "a@a.com");
+    await user.type(screen.getByLabelText("Email"), "a@a.com");
     await user.type(screen.getByLabelText("Contraseña"), "wrongpass");
     await user.click(screen.getByRole("button", { name: "Iniciar sesión" }));
 

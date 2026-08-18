@@ -205,7 +205,12 @@
    * sin ese margen de sobra, el desenfoque "revela" un aro más claro justo
    * en el borde del elemento (no hay imagen de la que tomar muestra más
    * allá del borde) — overflow-hidden en el <main> (auth-shell.tsx) recorta
-   * ese excedente, así que nunca se ve. */
+   * ese excedente, así que nunca se ve.
+   *
+   * blur(6px) y overlay más liviano (2026-08-17, pedido del cliente: "casi
+   * no se distingue" la foto) — antes blur(18px) + overlay 0.55→0.75 casi
+   * la tapaban del todo; con menos de ambos la foto de fondo se reconoce,
+   * la tarjeta blanca sigue teniendo contraste de sobra porque es opaca. */
   .auth-fondo-blur::before {
     content: "";
     position: absolute;
@@ -214,7 +219,7 @@
     background-image: var(--auth-bg-image), var(--auth-bg-fallback);
     background-size: cover;
     background-position: center;
-    filter: blur(18px);
+    filter: blur(6px);
   }
 
   .auth-fondo-blur::after {
@@ -222,15 +227,16 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: linear-gradient(180deg, rgba(18, 51, 59, 0.55), rgba(18, 51, 59, 0.75));
+    background: linear-gradient(180deg, rgba(18, 51, 59, 0.28), rgba(18, 51, 59, 0.45));
   }
 
   /* Botón principal de /ingresar y /registrarse (2026-08-17, pedido del
-   * cliente: "gradiente que va de turquesa/verde a magenta/violeta") —
-   * hex puntuales de este pedido, no tokens del sistema de diseño del
-   * resto del sitio (mismo criterio que .bg-tapiz/TR-046). */
-  .auth-gradient-button {
-    background: linear-gradient(90deg, #16a34a 0%, #06b6d4 45%, #a855f7 100%);
+   * cliente: reemplaza el gradiente turquesa/magenta original por "un
+   * color más propio de la página" — el coral de marca, --color-coral/
+   * --color-coral-dark, el mismo acento que usan los CTA del resto del
+   * sitio, TR-048). */
+  .auth-submit-button {
+    background: linear-gradient(135deg, var(--color-coral) 0%, var(--color-coral-dark) 100%);
   }
 }
 
