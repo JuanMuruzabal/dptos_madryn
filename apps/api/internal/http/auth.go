@@ -178,7 +178,19 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 	var existing db.Usuario
 	err := h.db.Where("email = ?", req.Email).First(&existing).Error
 	if err == nil {
-		writeError(w, http.StatusConflict, "ya existe una cuenta con ese email")
+		if existing.EmailConfirmado {
+			writeError(w, http.StatusConflict, "ya existe una cuenta con ese email")
+			return
+		}
+		// Cuenta existente pero sin confirmar todavía (2026-08-18, bug
+		// real reportado por el cliente: si cierra la pantalla de
+		// confirmación antes de cargar el código y vuelve a intentar
+		// registrarse, "ya existe una cuenta con ese email" lo dejaba
+		// softlockeado — sin ninguna forma de volver a esa pantalla). En
+		// vez de rechazarlo, se actualiza la cuenta con los datos nuevos
+		// y se manda un código fresco, como si fuera un alta de cero. Solo
+		// se rechaza de verdad si la cuenta ya está confirmada (arriba).
+		h.reintentarRegistroSinConfirmar(w, existing, req)
 		return
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -218,6 +230,41 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, registerResponse{
 		Usuario:              toUsuarioResponse(usuario),
+		RequiereConfirmacion: true,
+	})
+}
+
+// reintentarRegistroSinConfirmar — ver el comentario en register() sobre
+// el softlock que evita. existing ya viene de la base (con su ID/
+// GoogleID/etc. intactos); se pisan solo los campos que trae el form y se
+// genera un código nuevo — el viejo (si había uno) queda invalidado.
+func (h *authHandler) reintentarRegistroSinConfirmar(w http.ResponseWriter, existing db.Usuario, req registerRequest) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "error generando la contraseña")
+		return
+	}
+	codigo, err := generarCodigoConfirmacion()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "error generando el código de confirmación")
+		return
+	}
+	expiracion := clock.Now().Add(codigoConfirmacionTTL)
+
+	existing.Nombre = req.Nombre
+	existing.PasswordHash = string(hash)
+	existing.Telefono = req.Telefono
+	existing.CodigoConfirmacion = &codigo
+	existing.CodigoExpiracion = &expiracion
+	if err := h.db.Save(&existing).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "error actualizando el usuario")
+		return
+	}
+
+	h.enviarCodigoConfirmacion(existing, codigo)
+
+	writeJSON(w, http.StatusCreated, registerResponse{
+		Usuario:              toUsuarioResponse(existing),
 		RequiereConfirmacion: true,
 	})
 }

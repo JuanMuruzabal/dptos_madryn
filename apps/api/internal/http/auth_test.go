@@ -186,11 +186,13 @@ func TestRegister_NormalizaElEmail(t *testing.T) {
 	}
 }
 
-func TestRegister_RechazaEmailDuplicado(t *testing.T) {
-	h := &authHandler{db: testdb.New(t), jwtSecret: testSecret}
-
-	primero := jsonBody(t, validRegisterRequest("Uno", "duplicado@example.com", "password123"))
-	h.register(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/register", primero))
+// Solo rechaza de verdad si la cuenta existente YA está confirmada — si
+// no, es el caso de "reintentar registro" (ver test de abajo), no un
+// duplicado real.
+func TestRegister_RechazaEmailDuplicadoSiLaCuentaYaEstaConfirmada(t *testing.T) {
+	tx := testdb.New(t)
+	h := &authHandler{db: tx, jwtSecret: testSecret}
+	crearUsuarioConfirmado(t, tx, "Uno", "duplicado@example.com", "password123")
 
 	segundo := jsonBody(t, validRegisterRequest("Dos", "duplicado@example.com", "otraPassword123"))
 	rec := httptest.NewRecorder()
@@ -198,6 +200,88 @@ func TestRegister_RechazaEmailDuplicado(t *testing.T) {
 
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d, esperaba %d", rec.Code, http.StatusConflict)
+	}
+}
+
+// Bug real reportado por el cliente (2026-08-18): si el usuario cierra la
+// pantalla de confirmación antes de cargar el código y vuelve a intentar
+// registrarse, no debería quedar softlockeado — reintentar con el mismo
+// email (todavía sin confirmar) actualiza la cuenta y manda un código
+// nuevo, en vez de rechazar con "ya existe".
+func TestRegister_ReintentoConCuentaSinConfirmarActualizaYMandaCodigoNuevo(t *testing.T) {
+	tx := testdb.New(t)
+	h := &authHandler{db: tx, jwtSecret: testSecret}
+
+	primero := jsonBody(t, validRegisterRequest("Uno", "reintento@example.com", "password123"))
+	h.register(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/register", primero))
+	codigoViejo := codigoDe(t, tx, "reintento@example.com")
+
+	segundo := jsonBody(t, validRegisterRequest("Dos", "reintento@example.com", "otraPassword123"))
+	rec := httptest.NewRecorder()
+	h.register(rec, httptest.NewRequest(http.MethodPost, "/auth/register", segundo))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, esperaba %d (no debería rechazar, es un reintento) — body: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var resp registerResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("no se pudo parsear la respuesta: %v", err)
+	}
+	if !resp.RequiereConfirmacion {
+		t.Error("esperaba RequiereConfirmacion = true")
+	}
+	if resp.Usuario.Nombre != "Dos" {
+		t.Errorf("Nombre = %q, esperaba que se actualizara al del reintento (%q)", resp.Usuario.Nombre, "Dos")
+	}
+
+	// No se duplicó la fila.
+	var count int64
+	tx.Model(&db.Usuario{}).Where("email = ?", "reintento@example.com").Count(&count)
+	if count != 1 {
+		t.Fatalf("count = %d, esperaba 1 — el reintento no debería crear una cuenta duplicada", count)
+	}
+
+	// El código viejo quedó invalidado; la contraseña del reintento
+	// (no la original) es la que ahora sirve para loguear tras confirmar.
+	codigoNuevo := codigoDe(t, tx, "reintento@example.com")
+	if codigoNuevo == codigoViejo {
+		t.Error("esperaba un código distinto del original")
+	}
+
+	confirmar := jsonBody(t, confirmarRequest{Email: "reintento@example.com", Codigo: codigoNuevo})
+	recConfirmar := httptest.NewRecorder()
+	h.confirmar(recConfirmar, httptest.NewRequest(http.MethodPost, "/auth/confirmar", confirmar))
+	if recConfirmar.Code != http.StatusOK {
+		t.Fatalf("confirmar con el código del reintento: status = %d, esperaba %d", recConfirmar.Code, http.StatusOK)
+	}
+
+	login := jsonBody(t, loginRequest{Email: "reintento@example.com", Password: "otraPassword123"})
+	recLogin := httptest.NewRecorder()
+	h.login(recLogin, httptest.NewRequest(http.MethodPost, "/auth/login", login))
+	if recLogin.Code != http.StatusOK {
+		t.Errorf("login con la contraseña del reintento: status = %d, esperaba %d", recLogin.Code, http.StatusOK)
+	}
+}
+
+// El código viejo (del primer intento, antes de reintentar) ya no sirve
+// después del reintento — mismo criterio que reenviar-codigo.
+func TestRegister_ReintentoInvalidaElCodigoDelIntentoAnterior(t *testing.T) {
+	tx := testdb.New(t)
+	h := &authHandler{db: tx, jwtSecret: testSecret}
+
+	primero := jsonBody(t, validRegisterRequest("Uno", "invalidacodigo@example.com", "password123"))
+	h.register(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/register", primero))
+	codigoViejo := codigoDe(t, tx, "invalidacodigo@example.com")
+
+	segundo := jsonBody(t, validRegisterRequest("Dos", "invalidacodigo@example.com", "otraPassword123"))
+	h.register(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/auth/register", segundo))
+
+	confirmarViejo := jsonBody(t, confirmarRequest{Email: "invalidacodigo@example.com", Codigo: codigoViejo})
+	rec := httptest.NewRecorder()
+	h.confirmar(rec, httptest.NewRequest(http.MethodPost, "/auth/confirmar", confirmarViejo))
+
+	if rec.Code == http.StatusOK {
+		t.Error("el código del primer intento debería haber quedado invalidado por el reintento")
 	}
 }
 
