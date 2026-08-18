@@ -12,6 +12,7 @@ import (
 	"turismo-marcuzzi/api/internal/config"
 	"turismo-marcuzzi/api/internal/db"
 	"turismo-marcuzzi/api/internal/email"
+	"turismo-marcuzzi/api/internal/googleauth"
 	apihttp "turismo-marcuzzi/api/internal/http"
 	"turismo-marcuzzi/api/internal/reservas"
 	"turismo-marcuzzi/api/internal/storage"
@@ -50,16 +51,37 @@ func main() {
 		log.Fatalf("error inicializando storage de fotos: %v", err)
 	}
 
-	// TR-014: sin API key de Resend en este entorno, loguea en vez de
-	// mandar de verdad — ver internal/email.
-	sender := email.LogSender{}
+	// TR-014/TR-049: con RESEND_API_KEY configurada, manda emails de
+	// verdad vía Resend; sin eso (desarrollo local sin cuenta todavía),
+	// loguea en vez de mandar — ver internal/email.
+	var sender email.Sender
+	if cfg.ResendAPIKey != "" {
+		sender = email.ResendSender{APIKey: cfg.ResendAPIKey, From: cfg.ResendFromEmail}
+		log.Printf("email: Resend (from=%q)", cfg.ResendFromEmail)
+	} else {
+		sender = email.LogSender{}
+		log.Println("email: LogSender (sin RESEND_API_KEY) — los emails quedan en este log, no se mandan de verdad")
+	}
 
 	// TR-047: verifica el CAPTCHA (Cloudflare Turnstile) del registro del
 	// lado del servidor — con el secret de prueba por defecto (ver
 	// config.Load) funciona en desarrollo local sin credenciales reales.
 	captcha := turnstile.HTTPVerifier{Secret: cfg.TurnstileSecretKey}
 
-	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender, cfg.CORSAllowedOrigins, captcha)
+	// Prompt 2 (2026-08-18): sin GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET
+	// configurados (no hay par de prueba público como el de Turnstile —
+	// hace falta una cuenta real de Google Cloud), google queda nil y
+	// POST /auth/google devuelve un error claro en vez de arrancar a
+	// medias con credenciales vacías.
+	var googleExchanger googleauth.Exchanger
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		googleExchanger = googleauth.HTTPExchanger{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret}
+		log.Println("google sign-in: configurado")
+	} else {
+		log.Println("google sign-in: deshabilitado (sin GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET)")
+	}
+
+	router := apihttp.NewRouter(gormDB, cfg.JWTSecret, store, cfg.UploadsDir, sender, cfg.CORSAllowedOrigins, captcha, googleExchanger)
 
 	// T3.5/T3.7/TR-015/TR-016: barrido de reservas 'pendiente' vencidas
 	// (5 min sin contactar, o 2h contactadas sin confirmar). Cada 30s, no

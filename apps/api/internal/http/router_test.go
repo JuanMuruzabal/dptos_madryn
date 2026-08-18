@@ -16,9 +16,10 @@ import (
 // directamente), estos tests arman el router real completo — es la única
 // forma de ejercitar NewRouter/healthHandler en sí, y de paso confirma que
 // el wiring de middleware (requireAuth en las rutas protegidas, CORS, etc.)
-// funciona de punta a punta, no solo cada pieza por separado. captcha nil:
-// ninguno de estos tests pega a /auth/register, así que no hace falta un
-// turnstile.Verifier real (ver auth_test.go para eso).
+// funciona de punta a punta, no solo cada pieza por separado. captcha/
+// google nil: ninguno de estos tests pega a /auth/register ni /auth/google,
+// así que no hace falta un turnstile.Verifier/googleauth.Exchanger real
+// (ver auth_test.go para eso).
 func newTestRouter(t *testing.T) http.Handler {
 	t.Helper()
 	tx := testdb.New(t)
@@ -26,7 +27,7 @@ func newTestRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	return NewRouter(tx, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"}, nil)
+	return NewRouter(tx, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"}, nil, nil)
 }
 
 func TestNewRouter_HealthCheckConDB(t *testing.T) {
@@ -49,7 +50,7 @@ func TestNewRouter_HealthCheckSinDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	router := NewRouter(nil, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"}, nil)
+	router := NewRouter(nil, testSecret, store, t.TempDir(), email.LogSender{}, []string{"http://localhost:3000"}, nil, nil)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/health", nil))
@@ -93,7 +94,7 @@ func TestNewRouter_SirveArchivosDeUploads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se pudo crear el storage de prueba: %v", err)
 	}
-	router := NewRouter(nil, testSecret, store, uploadsDir, email.LogSender{}, []string{"http://localhost:3000"}, nil)
+	router := NewRouter(nil, testSecret, store, uploadsDir, email.LogSender{}, []string{"http://localhost:3000"}, nil, nil)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/uploads/test.txt", nil))
