@@ -40,6 +40,24 @@ type Config struct {
 	// cuenta de Cloudflare real todavía. En producción se pisa con la
 	// secret key real (Render, sync: false, ver render.yaml).
 	TurnstileSecretKey string
+	// ResendAPIKey/ResendFromEmail (2026-08-18, Prompt 2 de docs/prompts-login
+	// (1).md) — mandan de verdad el email de confirmación de cuenta.
+	// Vacío por defecto: cmd/api/main.go cae a email.LogSender (TR-014),
+	// el registro sigue funcionando en desarrollo local sin cuenta de
+	// Resend, solo que el código queda en el log del servidor en vez de
+	// llegar por email de verdad.
+	ResendAPIKey    string
+	ResendFromEmail string
+	// GoogleClientID/GoogleClientSecret (2026-08-18, Prompt 2) — credenciales
+	// OAuth de Google Cloud Console para "Ingresá con Google". Vacíos por
+	// defecto: cmd/api/main.go no arma ningún googleauth.Exchanger (queda
+	// nil, mismo convenio que TurnstileSecretKey/captcha) — POST
+	// /auth/google devuelve un error claro en vez de fallar a medias sin
+	// credenciales reales. No hay un par de prueba público como el de
+	// Turnstile — hace falta una cuenta real de Google Cloud para probar
+	// este flujo, incluso en desarrollo local.
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 // Load lee la configuración desde variables de entorno, con valores por
@@ -63,6 +81,12 @@ func Load() Config {
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
 
 		TurnstileSecretKey: getEnv("TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA"),
+
+		ResendAPIKey:    getEnv("RESEND_API_KEY", ""),
+		ResendFromEmail: getEnv("RESEND_FROM_EMAIL", ""),
+
+		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 	}
 }
 

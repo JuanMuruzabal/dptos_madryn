@@ -41,6 +41,14 @@ func TestLoad_DefaultsSinVariablesDeEntorno(t *testing.T) {
 	if cfg.TurnstileSecretKey != "1x0000000000000000000000000000000AA" {
 		t.Errorf("TurnstileSecretKey = %q, esperaba el secret de prueba de Cloudflare", cfg.TurnstileSecretKey)
 	}
+	// Sin par de prueba público como Turnstile (2026-08-18, Prompt 2) —
+	// vacíos por defecto, deshabilitan Resend/Google real en desarrollo.
+	if cfg.ResendAPIKey != "" || cfg.ResendFromEmail != "" {
+		t.Errorf("ResendAPIKey/ResendFromEmail deberían estar vacíos por defecto, cfg = %+v", cfg)
+	}
+	if cfg.GoogleClientID != "" || cfg.GoogleClientSecret != "" {
+		t.Errorf("GoogleClientID/GoogleClientSecret deberían estar vacíos por defecto, cfg = %+v", cfg)
+	}
 }
 
 func TestLoad_VariablesDeEntornoPisanLosDefaults(t *testing.T) {
@@ -80,6 +88,28 @@ func TestLoad_TurnstileSecretKeyPisaElDefault(t *testing.T) {
 
 	if cfg.TurnstileSecretKey != "0x-secret-real-de-produccion" {
 		t.Errorf("TurnstileSecretKey = %q, esperaba el valor de TURNSTILE_SECRET_KEY", cfg.TurnstileSecretKey)
+	}
+}
+
+func TestLoad_ResendYGoogleVariablesPisanLosDefaults(t *testing.T) {
+	t.Setenv("RESEND_API_KEY", "re_real_key")
+	t.Setenv("RESEND_FROM_EMAIL", "no-reply@turismomarcuzzi.com.ar")
+	t.Setenv("GOOGLE_CLIENT_ID", "el-client-id")
+	t.Setenv("GOOGLE_CLIENT_SECRET", "el-client-secret")
+
+	cfg := Load()
+
+	if cfg.ResendAPIKey != "re_real_key" {
+		t.Errorf("ResendAPIKey = %q, esperaba el valor de RESEND_API_KEY", cfg.ResendAPIKey)
+	}
+	if cfg.ResendFromEmail != "no-reply@turismomarcuzzi.com.ar" {
+		t.Errorf("ResendFromEmail = %q, esperaba el valor de RESEND_FROM_EMAIL", cfg.ResendFromEmail)
+	}
+	if cfg.GoogleClientID != "el-client-id" {
+		t.Errorf("GoogleClientID = %q, esperaba el valor de GOOGLE_CLIENT_ID", cfg.GoogleClientID)
+	}
+	if cfg.GoogleClientSecret != "el-client-secret" {
+		t.Errorf("GoogleClientSecret = %q, esperaba el valor de GOOGLE_CLIENT_SECRET", cfg.GoogleClientSecret)
 	}
 }
 

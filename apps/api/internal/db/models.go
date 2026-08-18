@@ -18,7 +18,32 @@ type Usuario struct {
 	PasswordHash string    `gorm:"column:password_hash;type:varchar(255);not null"`
 	Telefono     *string   `gorm:"type:varchar(50)"`
 	// rol: 'cliente' | 'administrador' (spec §4.5).
-	Rol       string `gorm:"type:varchar(20);not null;default:cliente;check:rol IN ('cliente','administrador')"`
+	Rol string `gorm:"type:varchar(20);not null;default:cliente;check:rol IN ('cliente','administrador')"`
+
+	// --- Confirmación de cuenta por email (Prompt 2 de docs/prompts-login
+	// (1).md, 2026-08-18) ---
+	// EmailConfirmado empieza en false al registrarse por email/contraseña
+	// — la cuenta no puede loguearse hasta confirmar el código (ver
+	// internal/http/auth.go). Las cuentas creadas vía Google (abajo)
+	// arrancan en true directo: Google ya verifica el email por su cuenta,
+	// pedirles un segundo código sería fricción sin ganancia de seguridad
+	// real.
+	EmailConfirmado bool `gorm:"column:email_confirmado;not null;default:false"`
+	// CodigoConfirmacion/CodigoExpiracion: nil cuando no hay un código
+	// pendiente (cuenta ya confirmada, o cuenta Google que nunca tuvo
+	// uno). Se pisan en cada reenvío — un código viejo deja de servir en
+	// cuanto se pide uno nuevo, no solo cuando expira solo.
+	CodigoConfirmacion *string    `gorm:"column:codigo_confirmacion;type:varchar(10)"`
+	CodigoExpiracion   *time.Time `gorm:"column:codigo_expiracion"`
+
+	// --- Google Sign-In (Prompt 2) ---
+	// GoogleID es el "sub" (subject) que devuelve la cuenta de Google —
+	// identificador estable de esa cuenta de Google, nunca cambia (a
+	// diferencia del email, que en teoría el usuario podría cambiar del
+	// lado de Google). Nullable + uniqueIndex: la mayoría de los usuarios
+	// (alta por email/contraseña) no tienen uno.
+	GoogleID *string `gorm:"column:google_id;type:varchar(255);uniqueIndex"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

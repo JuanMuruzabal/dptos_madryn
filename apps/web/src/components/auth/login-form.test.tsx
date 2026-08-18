@@ -28,7 +28,7 @@ describe("LoginForm", () => {
     expect(screen.getByRole("link", { name: "¿Olvidaste tu contraseña?" })).toBeInTheDocument();
   });
 
-  it("muestra el botón de Google, solo visual (sin funcionalidad todavía)", () => {
+  it("muestra el botón de Google (deshabilitado en test, sin NEXT_PUBLIC_GOOGLE_CLIENT_ID — ver google-signin-button.test.tsx)", () => {
     render(<LoginForm />);
     expect(screen.getByRole("button", { name: "Ingresá con Google" })).toBeInTheDocument();
   });

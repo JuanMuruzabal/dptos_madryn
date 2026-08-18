@@ -79,6 +79,24 @@ services:
       # que ser el par de NEXT_PUBLIC_TURNSTILE_SITE_KEY, abajo).
       - key: TURNSTILE_SECRET_KEY
         sync: false
+      # Confirmación de cuenta por email (Prompt 2, 2026-08-18) — API key
+      # de Resend y dirección remitente (tiene que ser de un dominio
+      # verificado en la cuenta de Resend). Sin setear, cmd/api/main.go
+      # cae a LogSender (TR-014): el registro sigue funcionando, pero el
+      # código de confirmación queda en el log del servicio en vez de
+      # llegarle al usuario por email de verdad.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      # "Ingresá con Google" (Prompt 2) — credenciales OAuth de Google
+      # Cloud Console. Sin setear, googleauth queda deshabilitado y
+      # POST /auth/google devuelve un error claro. GOOGLE_CLIENT_ID tiene
+      # que ser el mismo valor que NEXT_PUBLIC_GOOGLE_CLIENT_ID de abajo.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
 
   # --- Frontend Next.js (apps/web) ---
   - type: web
@@ -110,4 +128,10 @@ services:
       # a propósito, el widget de Turnstile la necesita ahí (NEXT_PUBLIC_).
       # Sin setear, cae a la site key de PRUEBA pública de Cloudflare.
       - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        sync: false
+      # Client ID público de Google Cloud (Prompt 2) — par de
+      # GOOGLE_CLIENT_ID de arriba, viaja al navegador a propósito
+      # (NEXT_PUBLIC_), el flujo de Google Identity Services lo necesita
+      # ahí. El client SECRET nunca va acá, solo en el servicio api.
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
         sync: false

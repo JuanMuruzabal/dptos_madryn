@@ -3,7 +3,7 @@
 import { useActionState, useState, type FormEvent } from "react";
 import { registerAction, type AuthFormState } from "@/app/actions/auth";
 import { AuthField, authInputClassNoIcon, authSubmitClass } from "@/components/auth/auth-shell";
-import { GoogleIcon } from "@/components/auth/google-icon";
+import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const initialState: AuthFormState = {};
@@ -281,15 +281,8 @@ export function RegisterForm() {
         <span className="h-px flex-1 bg-ink/10" />
       </div>
 
-      {/* Solo visual por ahora (Prompt 1) — ver el comentario equivalente
-          en login-form.tsx. */}
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
-      >
-        <GoogleIcon />
-        Ingresá con Google
-      </button>
+      {/* Real desde el Prompt 2 (2026-08-18) — ver google-signin-button.tsx. */}
+      <GoogleSignInButton />
     </form>
   );
 }
