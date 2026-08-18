@@ -17,6 +17,7 @@ import (
 	"turismo-marcuzzi/api/internal/reservas"
 	"turismo-marcuzzi/api/internal/storage"
 	"turismo-marcuzzi/api/internal/turnstile"
+	"turismo-marcuzzi/api/internal/usuarios"
 )
 
 func main() {
@@ -91,6 +92,17 @@ func main() {
 	expirerCtx, stopExpirer := context.WithCancel(context.Background())
 	defer stopExpirer()
 	go reservas.RunExpirer(expirerCtx, gormDB, 30*time.Second)
+
+	// TR-053 (2026-08-18): barrido de cuentas sin confirmar abandonadas
+	// (código vencido hace más de usuarios.GraciaTrasVencimiento, 48hs) —
+	// evita que registros abandonados (nadie vuelve a confirmar, intentos
+	// de bots que pasaron el CAPTCHA) se acumulen en la base para siempre.
+	// Cada 1h, no cada 30s como el de reservas: acá la ventana es de días,
+	// no minutos, un barrido tan frecuente sería puro gasto de DB sin
+	// ninguna ganancia real.
+	usuariosExpirerCtx, stopUsuariosExpirer := context.WithCancel(context.Background())
+	defer stopUsuariosExpirer()
+	go usuarios.RunExpirer(usuariosExpirerCtx, gormDB, time.Hour)
 
 	log.Printf("turismo-marcuzzi api escuchando en :%s (env=%s)", cfg.Port, cfg.Env)
 	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {
