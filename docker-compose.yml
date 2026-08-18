@@ -5,7 +5,9 @@
 #
 # Variables opcionales en un `.env` junto a este archivo (ver
 # .env.example): JWT_SECRET, CONTACTO_WHATSAPP, CONTACTO_EMAIL,
-# TURNSTILE_SECRET_KEY, NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+# TURNSTILE_SECRET_KEY, NEXT_PUBLIC_TURNSTILE_SITE_KEY, RESEND_API_KEY,
+# RESEND_FROM_EMAIL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+# NEXT_PUBLIC_GOOGLE_CLIENT_ID.
 
 services:
   postgres:
@@ -69,6 +71,14 @@ services:
       # CAPTCHA del registro (Cloudflare Turnstile, TR-047) — sin setear,
       # config.go ya cae al secret key de PRUEBA público de Cloudflare.
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-1x0000000000000000000000000000000AA}
+      # Confirmación de cuenta por email y "Ingresá con Google" (Prompt 2,
+      # 2026-08-18) — vacíos por defecto (LogSender/Google deshabilitado,
+      # ver .env.example); si tenés credenciales reales en tu propio .env
+      # de la raíz, se reenvían acá tal cual.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - "8080:8080"
     volumes:
@@ -95,6 +105,9 @@ services:
       CONTACTO_EMAIL: ${CONTACTO_EMAIL:-hola@turismomarcuzzi.com.ar}
       # Par público de TURNSTILE_SECRET_KEY de arriba (ver comentario ahí).
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-1x00000000000000000000AA}
+      # Par público de GOOGLE_CLIENT_ID del servicio api (Prompt 2) — vacío
+      # por defecto, el botón de Google queda visible pero deshabilitado.
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     ports:
       - "3000:3000"
     depends_on:
